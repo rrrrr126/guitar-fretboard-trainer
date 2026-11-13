@@ -1,0 +1,1844 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>指板音名トレーニング</title>
+<style>
+  :root{
+    --bg: #1b1b1f;
+    --panel: #26262c;
+    --panel-border: #38383f;
+    --text: #eee;
+    --text-dim: #9a9aa2;
+    --accent: #4f9dff;
+    --good: #3ecf6b;
+    --bad: #ff5f5f;
+    --wood: #caa06a;
+    --wood-dark: #a67c48;
+    --fret: #cfcfcf;
+    --nut: #f4f4f4;
+    --marker-dot: rgba(255,255,255,0.35);
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    font-family: "Hiragino Sans", "Yu Gothic", system-ui, -apple-system, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    display:flex;
+    justify-content:center;
+    padding:16px;
+  }
+  .app{
+    width:100%;
+    max-width:720px;
+    display:flex;
+    flex-direction:column;
+    gap:14px;
+  }
+  h1{
+    font-size:1.3rem;
+    text-align:center;
+    margin:4px 0 0;
+  }
+  .subtitle{
+    text-align:center;
+    color:var(--text-dim);
+    font-size:0.8rem;
+    margin:0 0 4px;
+  }
+  .tab-bar{
+    display:flex;
+    gap:8px;
+    justify-content:center;
+  }
+  .tab-btn{
+    flex:1;
+    max-width:220px;
+    padding:10px 8px;
+    font-size:0.9rem;
+    font-weight:bold;
+    background:var(--panel);
+    border:1px solid var(--panel-border);
+    color:var(--text-dim);
+  }
+  .tab-btn.active{
+    background:var(--accent);
+    color:#08131f;
+    border-color:var(--accent);
+  }
+  .tab-panel{ display:none; flex-direction:column; gap:14px; }
+  .tab-panel.active{ display:flex; }
+  section{
+    background: var(--panel);
+    border:1px solid var(--panel-border);
+    border-radius:12px;
+    padding:12px 14px;
+  }
+  .controls{
+    display:flex;
+    flex-wrap:wrap;
+    gap:10px 16px;
+    align-items:center;
+    justify-content:space-between;
+  }
+  .control-group{
+    display:flex;
+    align-items:center;
+    gap:6px;
+    font-size:0.85rem;
+  }
+  select, button{
+    font-family:inherit;
+    font-size:0.85rem;
+    border-radius:8px;
+    border:1px solid var(--panel-border);
+    background:#33333b;
+    color:var(--text);
+    padding:6px 10px;
+    cursor:pointer;
+  }
+  button:hover{ background:#3d3d46; }
+  button.active{
+    background: var(--accent);
+    color:#08131f;
+    border-color: var(--accent);
+    font-weight:bold;
+  }
+  button:disabled{ cursor:default; opacity:0.5; }
+  select:disabled{ cursor:default; opacity:0.5; }
+  .best-label{ font-size:0.75rem; color:var(--text-dim); }
+  .tuning-panel, .string-filter-panel{ display:none; flex-direction:column; gap:10px; }
+  .tuning-panel.open, .string-filter-panel.open{ display:flex; }
+  .fret-range-row{
+    display:flex;
+    align-items:center;
+    gap:8px;
+    font-size:0.85rem;
+  }
+  .fret-range-row label{ color:var(--text-dim); }
+  .string-filter-list{ display:flex; flex-wrap:wrap; gap:10px 18px; }
+  .tuning-row{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:8px;
+    font-size:0.85rem;
+  }
+  .tuning-row label{ color:var(--text-dim); width:70px; flex-shrink:0; }
+  .tuning-row select{ flex:1; }
+  .tuning-actions{ text-align:right; margin-top:4px; }
+  .filter-row{
+    display:flex;
+    align-items:center;
+    gap:5px;
+    font-size:0.85rem;
+    cursor:pointer;
+  }
+  .stats{
+    display:flex;
+    gap:18px;
+    justify-content:center;
+    font-size:0.85rem;
+    color:var(--text-dim);
+    flex-wrap:wrap;
+  }
+  .stats b{ color:var(--text); }
+  #modeLabel{ color: var(--accent); font-weight:bold; }
+  svg#staffSvg{ width:190px; height:auto; display:block; max-width:100%; flex-shrink:0; }
+  .fretboard-wrap{
+    padding:14px 10px 6px;
+    overflow-x:auto;
+  }
+  svg#fretboard{ width:100%; height:auto; display:block; }
+  .fret-num{ fill: var(--text-dim); font-size:11px; text-anchor:middle; }
+  .question-area{ text-align:center; }
+  #questionText{ margin:0 0 10px; font-size:0.95rem; color:var(--text-dim); }
+  .answer-timer{ max-width:280px; margin:0 auto 10px; }
+  .answer-timer-track{ height:6px; background:#33333b; border-radius:3px; overflow:hidden; }
+  .answer-timer-fill{
+    height:100%; width:100%; background:var(--accent); border-radius:3px;
+    transition: width 0.12s linear, background-color 0.2s;
+  }
+  .answer-timer-fill.urgent{ background:var(--bad); }
+  .reverse-prompt{
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    gap:8px;
+    margin-bottom:14px;
+  }
+  .reverse-prompt.hidden{ display:none; }
+  .reverse-note-label{ display:flex; align-items:baseline; gap:10px; }
+  .reverse-note-label .solfege{ font-size:1.8rem; font-weight:bold; }
+  .reverse-note-label .letter{ font-size:1.8rem; font-weight:bold; color:var(--text-dim); }
+  .reverse-progress{ font-size:0.9rem; color:var(--text-dim); }
+  #giveUpBtn{ font-size:0.8rem; }
+  .answer-row{
+    display:flex;
+    flex-wrap:wrap;
+    align-items:center;
+    justify-content:center;
+    gap:20px;
+    margin-bottom:10px;
+  }
+  .choices{
+    display:flex;
+    flex-wrap:wrap;
+    gap:8px;
+    justify-content:center;
+  }
+  .choice-btn{
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    min-width:64px;
+    padding:8px 6px;
+    line-height:1.2;
+  }
+  .choice-btn .solfege{ font-size:1.05rem; font-weight:bold; }
+  .choice-btn .letter{ font-size:1.05rem; font-weight:bold; color:var(--text-dim); }
+  .choice-btn.correct{ background: var(--good); border-color: var(--good); color:#062b12; }
+  .choice-btn.correct .letter{ color:#0a3d1a; }
+  .choice-btn.wrong{ background: var(--bad); border-color: var(--bad); color:#3a0808; }
+  .choice-btn.wrong .letter{ color:#4a0e0e; }
+  .choice-btn.dim{ opacity:0.4; }
+  .feedback{
+    font-size:0.95rem;
+    margin-bottom:10px;
+    min-height:1.3em;
+  }
+  .feedback.hidden{ visibility:hidden; }
+  .feedback.good{ color: var(--good); }
+  .feedback.bad{ color: var(--bad); }
+  #nextBtn{
+    background: var(--accent);
+    color:#08131f;
+    font-weight:bold;
+    border:none;
+    padding:9px 22px;
+  }
+  #nextBtn.hidden{ display:none; }
+  .weak-panel h2{ font-size:0.9rem; margin:0 0 8px; color:var(--text-dim); }
+  #weakList{ margin:0; padding-left:1.2em; font-size:0.85rem; }
+  #weakList li{ margin-bottom:4px; }
+  #weakList .empty{ color:var(--text-dim); list-style:none; margin-left:-1.2em; }
+  .footer-actions{ text-align:center; }
+  .footer-actions button{ font-size:0.75rem; color:var(--text-dim); background:transparent; }
+
+  .metro-panel{ display:flex; flex-direction:column; align-items:center; gap:12px; }
+  .metro-bpm-row{ display:flex; align-items:center; gap:16px; }
+  .metro-bpm-btn{
+    width:44px; height:44px; border-radius:50%;
+    font-size:1.3rem; font-weight:bold; line-height:1;
+    display:flex; align-items:center; justify-content:center;
+    padding:0;
+  }
+  .metro-bpm-value{ display:flex; flex-direction:column; align-items:center; min-width:110px; }
+  .metro-bpm-value input{
+    width:110px; background:transparent; border:none; color:var(--text);
+    font-size:2.6rem; font-weight:bold; text-align:center; font-family:inherit;
+    -moz-appearance:textfield;
+  }
+  .metro-bpm-value input::-webkit-outer-spin-button,
+  .metro-bpm-value input::-webkit-inner-spin-button{ -webkit-appearance:none; margin:0; }
+  .metro-bpm-unit{ font-size:0.75rem; color:var(--text-dim); letter-spacing:0.1em; }
+  .metro-bpm-slider{ width:100%; max-width:340px; accent-color:var(--accent); }
+  .metro-tap-btn{
+    width:100%; max-width:340px; padding:14px 0;
+    font-size:1rem; font-weight:bold;
+    background:#33333b; border:1px solid var(--panel-border);
+  }
+  .metro-tap-btn:active{ background:var(--accent); color:#08131f; }
+  .subdivision-buttons{ display:flex; flex-wrap:wrap; gap:8px; }
+  .sub-btn.active{ background:var(--accent); color:#08131f; border-color:var(--accent); font-weight:bold; }
+  .metro-visual{ display:flex; align-items:center; justify-content:center; min-height:56px; }
+  .beat-dots{ display:flex; flex-wrap:wrap; gap:10px; justify-content:center; }
+  .beat-dot{
+    width:22px; height:22px; border-radius:50%;
+    background:#33333b; border:2px solid var(--panel-border);
+    transition: background-color 0.06s, border-color 0.06s, transform 0.06s;
+  }
+  .beat-dot.downbeat{ border-color:#6b6b76; }
+  .beat-dot.on{ background:var(--accent); border-color:var(--accent); transform:scale(1.2); }
+  .beat-dot.downbeat.on{ background:var(--good); border-color:var(--good); }
+  .metro-playback{ text-align:center; }
+  .metro-play-btn{
+    background:var(--accent); color:#08131f; font-weight:bold; border:none;
+    padding:14px 40px; font-size:1.05rem;
+  }
+  .metro-play-btn.playing{ background:var(--bad); }
+</style>
+</head>
+<body>
+<div class="app">
+  <h1>ギター練習ツール</h1>
+  <p class="subtitle">指板の音名トレーニングとメトロノームで練習しよう</p>
+
+  <div class="tab-bar">
+    <button class="tab-btn active" id="tabBtnNotes" type="button" data-tab="notes">🎵 音名トレーニング</button>
+    <button class="tab-btn" id="tabBtnMetronome" type="button" data-tab="metronome">🎼 メトロノーム</button>
+  </div>
+
+  <div id="tabNotes" class="tab-panel active">
+  <section class="controls">
+    <div class="control-group">
+      <label for="instrumentSelect">楽器</label>
+      <select id="instrumentSelect">
+        <option value="guitar6">ギター (6弦)</option>
+        <option value="guitar7">ギター (7弦)</option>
+        <option value="bass4">ベース (4弦)</option>
+        <option value="bass5">ベース (5弦)</option>
+      </select>
+    </div>
+    <div class="control-group">
+      <label><input type="checkbox" id="naturalOnlyToggle"> ナチュラル音のみ</label>
+    </div>
+    <div class="control-group">
+      <label><input type="checkbox" id="staffRevealToggle"> 五線譜を回答前から表示</label>
+    </div>
+    <div class="control-group">
+      <label for="answerTimeLimitSelect">回答制限時間</label>
+      <select id="answerTimeLimitSelect">
+        <option value="0">オフ</option>
+        <option value="3">3秒</option>
+        <option value="5">5秒</option>
+        <option value="10">10秒</option>
+      </select>
+    </div>
+    <div class="control-group">
+      <button id="tuningEditBtn" type="button">チューニング編集</button>
+    </div>
+    <div class="control-group">
+      <button id="stringFilterBtn" type="button">出題範囲設定</button>
+    </div>
+    <div class="control-group">
+      <button id="reviewModeBtn" type="button">苦手問題を復習</button>
+    </div>
+    <div class="control-group">
+      <button id="reverseModeBtn" type="button">🔄 逆引きモード</button>
+    </div>
+  </section>
+
+  <section id="tuningPanel" class="tuning-panel"></section>
+  <section id="stringFilterPanel" class="string-filter-panel">
+    <div class="fret-range-row">
+      <label for="fretMinSelect">フレット範囲</label>
+      <select id="fretMinSelect"></select>
+      <span>〜</span>
+      <select id="fretMaxSelect"></select>
+    </div>
+    <div id="stringFilterList" class="string-filter-list"></div>
+  </section>
+
+  <section class="stats">
+    <span>正解率: <b id="accuracyText">--</b></span>
+    <span>問題数: <b id="attemptsText">0</b></span>
+    <span id="modeLabel"></span>
+  </section>
+
+  <section class="fretboard-wrap">
+    <svg id="fretboard" xmlns="http://www.w3.org/2000/svg"></svg>
+  </section>
+
+  <section class="question-area">
+    <p id="questionText">青い印の位置の音名を答えてください</p>
+    <div id="answerTimerWrap" class="answer-timer" style="display:none;">
+      <div class="answer-timer-track"><div id="answerTimerFill" class="answer-timer-fill"></div></div>
+    </div>
+    <div id="reversePrompt" class="reverse-prompt hidden">
+      <div class="reverse-note-label">
+        <span id="reverseSolfege" class="solfege"></span>
+        <span id="reverseLetter" class="letter"></span>
+      </div>
+      <div class="reverse-progress">見つけた: <span id="reverseFoundCount">0</span> / <span id="reverseTotalCount">0</span></div>
+      <button id="giveUpBtn" type="button">わからない（ギブアップ）</button>
+    </div>
+    <div id="answerRow" class="answer-row">
+      <div id="choices" class="choices"></div>
+      <svg id="staffSvg" xmlns="http://www.w3.org/2000/svg"></svg>
+    </div>
+    <div id="feedback" class="feedback hidden"></div>
+    <button id="nextBtn" class="hidden" type="button">次の問題 →</button>
+  </section>
+
+  <section class="weak-panel">
+    <h2>苦手ポジション TOP5</h2>
+    <ol id="weakList"></ol>
+  </section>
+
+  <div class="footer-actions">
+    <button id="resetDataBtn" type="button">学習データをリセット</button>
+  </div>
+  </div>
+
+  <div id="tabMetronome" class="tab-panel">
+    <section class="metro-panel">
+      <div class="metro-bpm-row">
+        <button id="bpmDownBtn" class="metro-bpm-btn" type="button">−</button>
+        <div class="metro-bpm-value">
+          <input id="bpmInput" type="number" min="20" max="300" value="120">
+          <span class="metro-bpm-unit">BPM</span>
+        </div>
+        <button id="bpmUpBtn" class="metro-bpm-btn" type="button">＋</button>
+      </div>
+      <input id="bpmSlider" class="metro-bpm-slider" type="range" min="20" max="300" value="120">
+      <button id="tapTempoBtn" class="metro-tap-btn" type="button">TAP (Spaceキー)</button>
+    </section>
+
+    <section class="metro-panel">
+      <div class="control-group">
+        <label for="beatsSelect">拍子（1小節の拍数）</label>
+        <select id="beatsSelect">
+          <option value="2">2拍子</option>
+          <option value="3">3拍子</option>
+          <option value="4" selected>4拍子</option>
+          <option value="5">5拍子</option>
+          <option value="6">6拍子</option>
+          <option value="7">7拍子</option>
+        </select>
+      </div>
+      <div class="control-group">
+        <label>分割（1拍あたりのクリック数）</label>
+        <div id="subdivisionButtons" class="subdivision-buttons">
+          <button class="sub-btn active" type="button" data-sub="1">♩ 4分</button>
+          <button class="sub-btn" type="button" data-sub="2">♫ 8分</button>
+          <button class="sub-btn" type="button" data-sub="3">3連符</button>
+          <button class="sub-btn" type="button" data-sub="4">16分</button>
+        </div>
+      </div>
+    </section>
+
+    <section class="metro-visual">
+      <div id="beatDots" class="beat-dots"></div>
+    </section>
+
+    <section class="metro-playback">
+      <button id="metroPlayBtn" class="metro-play-btn" type="button">▶ 再生</button>
+    </section>
+  </div>
+</div>
+
+<script>
+(function(){
+  "use strict";
+  const tabBtns = document.querySelectorAll('.tab-btn');
+  const tabPanels = {
+    notes: document.getElementById('tabNotes'),
+    metronome: document.getElementById('tabMetronome')
+  };
+  tabBtns.forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      tabBtns.forEach(b=> b.classList.toggle('active', b===btn));
+      Object.entries(tabPanels).forEach(([name, panel])=>{
+        panel.classList.toggle('active', name===btn.dataset.tab);
+      });
+    });
+  });
+})();
+</script>
+
+<script>
+(function(){
+  "use strict";
+
+  const CHROMATIC = ['C','C#','D','D#','E','F','F#','G','G#','A','A#','B'];
+  const NOTE_INDEX = Object.fromEntries(CHROMATIC.map((n,i)=>[n,i]));
+  const NATURALS = ['C','D','E','F','G','A','B'];
+  const SOLFEGE = {
+    C:'ド', 'C#':'ド#', D:'レ', 'D#':'レ#', E:'ミ', F:'ファ', 'F#':'ファ#',
+    G:'ソ', 'G#':'ソ#', A:'ラ', 'A#':'ラ#', B:'シ'
+  };
+  const FLAT_ALIAS = { 'C#':'D♭', 'D#':'E♭', 'F#':'G♭', 'G#':'A♭', 'A#':'B♭' };
+  const FLAT_SOLFEGE = { 'C#':'レ♭', 'D#':'ミ♭', 'F#':'ソ♭', 'G#':'ラ♭', 'A#':'シ♭' };
+
+  const DEFAULT_TUNINGS = {
+    guitar6: ['E','A','D','G','B','E'],
+    guitar7: ['B','E','A','D','G','B','E'],
+    bass4:   ['E','A','D','G'],
+    bass5:   ['B','E','A','D','G']
+  };
+  const INSTRUMENT_NAMES = {
+    guitar6: 'ギター (6弦)', guitar7: 'ギター (7弦)', bass4: 'ベース (4弦)', bass5: 'ベース (5弦)'
+  };
+  // open-string octave (scientific pitch notation) for each default tuning, low string to high string
+  const DEFAULT_OCTAVES = {
+    guitar6: [2,2,3,3,3,4],
+    guitar7: [1,2,2,3,3,3,4],
+    bass4:   [1,1,2,2],
+    bass5:   [0,1,1,2,2]
+  };
+  const LETTER_STEP = { C:0, D:1, E:2, F:3, G:4, A:5, B:6 };
+
+  const SLOW_MS = 4000; // 回答にこれ以上かかったら「遅い」とみなす
+
+  function pitchAt(openNote, fret){
+    return CHROMATIC[(NOTE_INDEX[openNote] + fret) % 12];
+  }
+
+  // real pitch (note name + scientific octave) sounded at a given string/fret
+  function pitchWithOctaveAt(s, fret){
+    const strings = getCurrentTuning();
+    const octaves = DEFAULT_OCTAVES[settings.instrumentId] || strings.map(()=>3);
+    const abs = octaves[s]*12 + NOTE_INDEX[strings[s]] + fret;
+    const octave = Math.floor(abs/12);
+    const noteName = CHROMATIC[((abs%12)+12)%12];
+    return { noteName, octave };
+  }
+
+  // ---------- persistence ----------
+  const LS_TUNINGS = 'fbt_tunings';
+  const LS_SETTINGS = 'fbt_settings';
+  const LS_WEAK = 'fbt_weak';
+  const LS_STATS = 'fbt_stats';
+
+  function loadJSON(key, fallback){
+    try{
+      const raw = localStorage.getItem(key);
+      if(!raw) return fallback;
+      return JSON.parse(raw);
+    }catch(e){ return fallback; }
+  }
+  function saveJSON(key, val){
+    try{ localStorage.setItem(key, JSON.stringify(val)); }catch(e){}
+  }
+
+  let tunings = loadJSON(LS_TUNINGS, null);
+  if(!tunings){ tunings = JSON.parse(JSON.stringify(DEFAULT_TUNINGS)); }
+  else{
+    // ensure all instruments present / correct length
+    Object.keys(DEFAULT_TUNINGS).forEach(id=>{
+      if(!Array.isArray(tunings[id]) || tunings[id].length !== DEFAULT_TUNINGS[id].length){
+        tunings[id] = DEFAULT_TUNINGS[id].slice();
+      }
+    });
+  }
+
+  const settings = Object.assign(
+    { instrumentId:'guitar6', naturalOnly:false, stringFilter:{}, showStaffBeforeAnswer:false, answerTimeLimit:0, fretRange:{min:0,max:12} },
+    loadJSON(LS_SETTINGS, {})
+  );
+  if(!settings.stringFilter || typeof settings.stringFilter !== 'object'){ settings.stringFilter = {}; }
+  let weakData = loadJSON(LS_WEAK, {});
+  let stats = Object.assign({ attempts:0, correct:0 }, loadJSON(LS_STATS, {}));
+
+  function saveTunings(){ saveJSON(LS_TUNINGS, tunings); }
+  function saveSettings(){ saveJSON(LS_SETTINGS, settings); }
+  function saveWeak(){ saveJSON(LS_WEAK, weakData); }
+  function saveStats(){ saveJSON(LS_STATS, stats); }
+
+  // ---------- state ----------
+  const state = {
+    reviewMode: false,
+    reverseMode: false,
+    answered: false,
+    idle: false, // true while waiting for the user to start after a settings change
+    current: null, // {s, f, pc}
+    questionStartTime: 0
+  };
+
+  // reverse mode: a note name is given; the user must tap every matching fretboard position
+  const reverseState = {
+    pc: null,
+    targets: [],      // [{s,f}]
+    found: new Set(), // "s-f" keys already tapped correctly
+    wrongPos: null     // {s,f} of an incorrect tap, if any
+  };
+
+  const answerTimer = { intervalId: null };
+
+  function getCurrentTuning(){ return tunings[settings.instrumentId]; }
+  function tuningKey(){
+    return settings.instrumentId + ':' + getCurrentTuning().join('-');
+  }
+  function weakKey(s, f){ return tuningKey() + '|' + s + '|' + f; }
+
+  function getStringFilter(){
+    const strings = getCurrentTuning();
+    let filter = settings.stringFilter[settings.instrumentId];
+    if(!Array.isArray(filter) || filter.length !== strings.length){
+      filter = strings.map(()=>true);
+      settings.stringFilter[settings.instrumentId] = filter;
+    }
+    return filter;
+  }
+
+  function getFretRange(){
+    let r = settings.fretRange;
+    if(!r || typeof r.min!=='number' || typeof r.max!=='number' ||
+       r.min<0 || r.max>12 || r.min>r.max){
+      r = { min:0, max:12 };
+      settings.fretRange = r;
+    }
+    return r;
+  }
+
+  // ---------- DOM refs ----------
+  const instrumentSelect = document.getElementById('instrumentSelect');
+  const naturalOnlyToggle = document.getElementById('naturalOnlyToggle');
+  const staffRevealToggle = document.getElementById('staffRevealToggle');
+  const staffSvg = document.getElementById('staffSvg');
+  const answerTimeLimitSelect = document.getElementById('answerTimeLimitSelect');
+  const answerTimerWrap = document.getElementById('answerTimerWrap');
+  const answerTimerFill = document.getElementById('answerTimerFill');
+  const tuningEditBtn = document.getElementById('tuningEditBtn');
+  const tuningPanel = document.getElementById('tuningPanel');
+  const stringFilterBtn = document.getElementById('stringFilterBtn');
+  const stringFilterPanel = document.getElementById('stringFilterPanel');
+  const stringFilterList = document.getElementById('stringFilterList');
+  const fretMinSelect = document.getElementById('fretMinSelect');
+  const fretMaxSelect = document.getElementById('fretMaxSelect');
+  const reviewModeBtn = document.getElementById('reviewModeBtn');
+  const reverseModeBtn = document.getElementById('reverseModeBtn');
+  const modeLabel = document.getElementById('modeLabel');
+  const accuracyText = document.getElementById('accuracyText');
+  const attemptsText = document.getElementById('attemptsText');
+  const svg = document.getElementById('fretboard');
+  const choicesEl = document.getElementById('choices');
+  const feedbackEl = document.getElementById('feedback');
+  const nextBtn = document.getElementById('nextBtn');
+  const weakListEl = document.getElementById('weakList');
+  const resetDataBtn = document.getElementById('resetDataBtn');
+  const questionText = document.getElementById('questionText');
+  const reversePrompt = document.getElementById('reversePrompt');
+  const reverseSolfege = document.getElementById('reverseSolfege');
+  const reverseLetter = document.getElementById('reverseLetter');
+  const reverseFoundCount = document.getElementById('reverseFoundCount');
+  const reverseTotalCount = document.getElementById('reverseTotalCount');
+  const giveUpBtn = document.getElementById('giveUpBtn');
+  const answerRow = document.getElementById('answerRow');
+
+  instrumentSelect.value = settings.instrumentId;
+  naturalOnlyToggle.checked = settings.naturalOnly;
+  staffRevealToggle.checked = settings.showStaffBeforeAnswer;
+  answerTimeLimitSelect.value = String(settings.answerTimeLimit || 0);
+
+  // ---------- question picking ----------
+  function buildCandidates(){
+    const strings = getCurrentTuning();
+    const filter = getStringFilter();
+    const fretRange = getFretRange();
+    const list = [];
+    for(let s=0; s<strings.length; s++){
+      if(!filter[s]) continue;
+      for(let f=fretRange.min; f<=fretRange.max; f++){
+        const pc = pitchAt(strings[s], f);
+        if(settings.naturalOnly && NATURALS.indexOf(pc)===-1) continue;
+        list.push({ s, f, pc });
+      }
+    }
+    return list;
+  }
+
+  // How "weak" a position is: 0 = never missed / no data, higher = missed more / answered slowly,
+  // eased down a bit by correct answers so it fades out again with practice.
+  function weakScore(s, f){
+    const rec = weakData[weakKey(s, f)];
+    if(!rec) return 0;
+    const wrong = rec.wrong||0, slow = rec.slow||0, correct = rec.correct||0;
+    const missScore = wrong*3 + slow*1.5;
+    if(missScore<=0) return 0;
+    return Math.max(0, missScore - Math.min(correct, wrong+slow)*0.5);
+  }
+
+  // Normal mode still covers the whole board, but weak positions are weighted to come up
+  // more often (capped so they don't crowd out everything else entirely).
+  function pickNormalQuestion(){
+    const candidates = buildCandidates();
+    if(candidates.length===0) return null;
+    const weighted = [];
+    candidates.forEach(c=>{
+      const weight = 1 + Math.min(7, Math.round(weakScore(c.s, c.f)*0.6));
+      for(let i=0; i<weight; i++) weighted.push(c);
+    });
+    return weighted[Math.floor(Math.random()*weighted.length)];
+  }
+
+  function pickWeakQuestion(){
+    const candidates = buildCandidates();
+    const weighted = [];
+    candidates.forEach(c=>{
+      const score = weakScore(c.s, c.f);
+      if(score<=0) return;
+      const weight = Math.max(1, Math.round(score));
+      for(let i=0; i<weight; i++) weighted.push(c);
+    });
+    if(weighted.length===0) return null;
+    return weighted[Math.floor(Math.random()*weighted.length)];
+  }
+
+  // Every physical position within the current string filter / fret range, regardless of
+  // naturalOnly (that only restricts which note gets ASKED, not which frets are tappable).
+  function buildTapPositions(){
+    const strings = getCurrentTuning();
+    const filter = getStringFilter();
+    const fretRange = getFretRange();
+    const list = [];
+    for(let s=0; s<strings.length; s++){
+      if(!filter[s]) continue;
+      for(let f=fretRange.min; f<=fretRange.max; f++){
+        list.push({ s, f, pc: pitchAt(strings[s], f) });
+      }
+    }
+    return list;
+  }
+
+  function groupTapPositionsByAskablePc(){
+    const eligible = settings.naturalOnly ? NATURALS : CHROMATIC;
+    const byPc = {};
+    buildTapPositions().forEach(p=>{
+      if(eligible.indexOf(p.pc)===-1) return;
+      (byPc[p.pc] = byPc[p.pc] || []).push(p);
+    });
+    return byPc;
+  }
+
+  function pickReverseQuestion(){
+    const byPc = groupTapPositionsByAskablePc();
+    const pcs = Object.keys(byPc);
+    if(pcs.length===0) return null;
+    const weighted = [];
+    pcs.forEach(pc=>{
+      const totalWeak = byPc[pc].reduce((sum,p)=> sum + weakScore(p.s,p.f), 0);
+      const weight = 1 + Math.min(7, Math.round(totalWeak*0.3));
+      for(let i=0; i<weight; i++) weighted.push(pc);
+    });
+    const pc = weighted[Math.floor(Math.random()*weighted.length)];
+    return { pc, targets: byPc[pc] };
+  }
+
+  function pickReverseWeakQuestion(){
+    const byPc = groupTapPositionsByAskablePc();
+    const weighted = [];
+    Object.keys(byPc).forEach(pc=>{
+      const score = byPc[pc].reduce((sum,p)=> sum + weakScore(p.s,p.f), 0);
+      if(score<=0) return;
+      const weight = Math.max(1, Math.round(score));
+      for(let i=0; i<weight; i++) weighted.push(pc);
+    });
+    if(weighted.length===0) return null;
+    const pc = weighted[Math.floor(Math.random()*weighted.length)];
+    return { pc, targets: byPc[pc] };
+  }
+
+  function applyModeVisibility(){
+    const rev = state.reverseMode;
+    reversePrompt.classList.toggle('hidden', !rev);
+    answerRow.style.display = rev ? 'none' : 'flex';
+  }
+
+  function updateReversePromptUI(){
+    reverseSolfege.textContent = SOLFEGE[reverseState.pc];
+    reverseLetter.textContent = reverseState.pc;
+    reverseFoundCount.textContent = reverseState.found.size;
+    reverseTotalCount.textContent = reverseState.targets.length;
+  }
+
+  function setupReverseQuestion(q){
+    reverseState.pc = q.pc;
+    reverseState.targets = q.targets;
+    reverseState.found = new Set();
+    reverseState.wrongPos = null;
+    state.current = null;
+    state.answered = false;
+    state.questionStartTime = Date.now();
+    feedbackEl.classList.add('hidden');
+    nextBtn.classList.add('hidden');
+    giveUpBtn.style.display = '';
+    questionText.textContent = '指板上で、この音のポジションをすべてタップしてください';
+    updateReversePromptUI();
+    renderFretboard();
+    startAnswerTimer();
+  }
+
+  function nextQuestion(){
+    state.idle = false;
+    nextBtn.textContent = '次の問題 →';
+    applyModeVisibility();
+
+    if(state.reverseMode){
+      let q = state.reviewMode ? pickReverseWeakQuestion() : pickReverseQuestion();
+      if(!q && state.reviewMode){
+        alert('このチューニング・出題範囲ではまだ苦手データがありません。まずは通常モードで問題を解いてみましょう。');
+        state.reviewMode = false;
+        updateModeUI();
+        q = pickReverseQuestion();
+      }
+      if(!q) return;
+      setupReverseQuestion(q);
+      return;
+    }
+
+    let q = state.reviewMode ? pickWeakQuestion() : pickNormalQuestion();
+    if(!q && state.reviewMode){
+      alert('このチューニング・出題範囲ではまだ苦手データがありません。まずは通常モードで問題を解いてみましょう。');
+      state.reviewMode = false;
+      updateModeUI();
+      q = pickNormalQuestion();
+    }
+    if(!q){
+      // buildCandidates が空(あり得ないはずだが安全策)
+      return;
+    }
+    state.current = q;
+    state.answered = false;
+    state.questionStartTime = Date.now();
+    feedbackEl.classList.add('hidden');
+    nextBtn.classList.add('hidden');
+    questionText.textContent = '青い印の位置の音名を答えてください';
+    renderFretboard();
+    renderChoices();
+    startAnswerTimer();
+  }
+
+  // Settings changes pause the app instead of jumping straight into a new (possibly
+  // already-ticking) question — the user starts explicitly when ready.
+  function showIdleState(){
+    stopAnswerTimer();
+    state.idle = true;
+    state.answered = false;
+    state.current = null;
+    reverseState.pc = null;
+    reverseState.targets = [];
+    reverseState.found = new Set();
+    reverseState.wrongPos = null;
+
+    applyModeVisibility();
+    reversePrompt.classList.add('hidden');
+    answerRow.style.display = 'none';
+    choicesEl.innerHTML = '';
+    feedbackEl.classList.add('hidden');
+    questionText.textContent = '設定を変更しました。準備ができたらスタートしてください。';
+    nextBtn.textContent = 'スタート →';
+    nextBtn.classList.remove('hidden');
+    renderFretboard();
+  }
+
+  // ---------- rendering: fretboard ----------
+  const NUT_X = 150, FRET_W = 62, TOP_MARGIN = 80, STRING_GAP = 34, RIGHT_PAD = 24;
+  const OPEN_X = NUT_X - 32, HEAD_TIP_X = 16, HEAD_FLARE = 26, PEG_POST_LEN = 20, PEG_R = 6;
+
+  // Real fret spacing follows the 12th-root-of-2 rule, so frets get narrower toward the body.
+  const SCALE_LEN = 12*FRET_W*2;
+  function fretWireX(fret){
+    return fret===0 ? NUT_X : NUT_X + SCALE_LEN*(1 - Math.pow(2, -fret/12));
+  }
+  function cellCenterX(fret){
+    return fret===0 ? OPEN_X : (fretWireX(fret-1)+fretWireX(fret))/2;
+  }
+
+  function svgEl(tag, attrs){
+    const el = document.createElementNS('http://www.w3.org/2000/svg', tag);
+    for(const k in attrs) el.setAttribute(k, attrs[k]);
+    return el;
+  }
+
+  function gradientStops(el, stops){
+    stops.forEach(([off,color])=>{
+      el.appendChild(svgEl('stop', { offset:`${off}%`, 'stop-color':color }));
+    });
+    return el;
+  }
+
+  const BODY_WIDEN = 1.2; // strings splay gently wider toward the body, like a real neck
+
+  function renderFretboard(){
+    svg.innerHTML = '';
+    const strings = getCurrentTuning();
+    const n = strings.length;
+
+    const neckTop = TOP_MARGIN - 16;
+    const neckBottom = TOP_MARGIN + (n-1)*STRING_GAP + 16;
+    const topHeadY = neckTop - HEAD_FLARE;
+    const bottomHeadY = neckBottom + HEAD_FLARE;
+    const CAP_R = 16;
+    const width = NUT_X + 12*FRET_W + RIGHT_PAD;
+    const RIGHT_EDGE = width - RIGHT_PAD;
+
+    const centerY = TOP_MARGIN + (n-1)*STRING_GAP/2;
+    const nutHalf = (n-1)*STRING_GAP/2;
+    const bodyHalf = nutHalf*BODY_WIDEN;
+    function halfWidthAt(x){
+      const t = Math.max(0, Math.min(1, (x-NUT_X)/(RIGHT_EDGE-NUT_X)));
+      return nutHalf + (bodyHalf-nutHalf)*t;
+    }
+    function topYAt(x){ return centerY - (halfWidthAt(x)+16); }
+    function bottomYAt(x){ return centerY + (halfWidthAt(x)+16); }
+    function stringYAt(row, x){
+      const norm = n>1 ? (row-(n-1)/2)/((n-1)/2) : 0;
+      return centerY + norm*halfWidthAt(x);
+    }
+
+    const height = Math.max(bottomHeadY, bottomYAt(RIGHT_EDGE)+40);
+    svg.setAttribute('viewBox', `0 0 ${width} ${height}`);
+
+    // ---- gradient defs ----
+    const defs = svgEl('defs', {});
+    defs.appendChild(gradientStops(svgEl('linearGradient', { id:'woodGrad', x1:'0%', y1:'0%', x2:'100%', y2:'0%' }), [
+      [0,'#e7c785'], [22,'#d9b06a'], [48,'#ecce90'], [72,'#d3a862'], [100,'#e7c785']
+    ]));
+    defs.appendChild(gradientStops(svgEl('radialGradient', { id:'pegGrad', cx:'35%', cy:'32%', r:'70%' }), [
+      [0,'#f6f6f6'], [55,'#b9b9bd'], [100,'#57575b']
+    ]));
+    svg.appendChild(defs);
+
+    // ---- headstock (tapered paddle with small rounded corners at the tip) ----
+    const headPath = `M ${NUT_X} ${neckTop} `
+      + `L ${HEAD_TIP_X+CAP_R} ${topHeadY} `
+      + `A ${CAP_R} ${CAP_R} 0 0 0 ${HEAD_TIP_X} ${topHeadY+CAP_R} `
+      + `L ${HEAD_TIP_X} ${bottomHeadY-CAP_R} `
+      + `A ${CAP_R} ${CAP_R} 0 0 0 ${HEAD_TIP_X+CAP_R} ${bottomHeadY} `
+      + `L ${NUT_X} ${neckBottom} Z`;
+    svg.appendChild(svgEl('path', { d:headPath, fill:'url(#woodGrad)', stroke:'#7a5a30', 'stroke-width':1.5 }));
+
+    // ---- neck (fretboard) - widens toward the body like a real neck ----
+    const neckPath = `M ${NUT_X} ${topYAt(NUT_X)} L ${RIGHT_EDGE} ${topYAt(RIGHT_EDGE)} `
+      + `L ${RIGHT_EDGE} ${bottomYAt(RIGHT_EDGE)} L ${NUT_X} ${bottomYAt(NUT_X)} Z`;
+    svg.appendChild(svgEl('path', { d:neckPath, fill:'url(#woodGrad)', stroke:'#7a5a30', 'stroke-width':1.5 }));
+
+    // subtle wood grain streaks, following the taper
+    for(let i=0;i<5;i++){
+      const frac = (i+0.5)/5;
+      const startY = topYAt(NUT_X) + frac*(bottomYAt(NUT_X)-topYAt(NUT_X));
+      const endY = topYAt(RIGHT_EDGE) + frac*(bottomYAt(RIGHT_EDGE)-topYAt(RIGHT_EDGE));
+      const midX = (NUT_X+RIGHT_EDGE)/2, midY = (startY+endY)/2 + (i%2?4:-4);
+      svg.appendChild(svgEl('path', {
+        d:`M ${NUT_X} ${startY} Q ${midX} ${midY} ${RIGHT_EDGE} ${endY}`,
+        stroke:'rgba(90,60,20,0.08)', 'stroke-width':1, fill:'none'
+      }));
+    }
+
+    // fret markers (plain black position dots)
+    const singleFrets = [3,5,7,9];
+    singleFrets.forEach(f=>{
+      svg.appendChild(svgEl('circle', { cx:cellCenterX(f), cy:centerY, r:7, fill:'#161616', stroke:'#000', 'stroke-width':0.5 }));
+    });
+    const x12 = cellCenterX(12);
+    const dot12Offset = STRING_GAP*1.35 * (halfWidthAt(x12)/nutHalf);
+    [centerY-dot12Offset, centerY+dot12Offset].forEach(y=>{
+      svg.appendChild(svgEl('circle', { cx:x12, cy:y, r:7, fill:'#161616', stroke:'#000', 'stroke-width':0.5 }));
+    });
+
+    // fret wires (metallic double-stroke), spanning the tapered width at each fret's x
+    for(let f=1; f<=12; f++){
+      const x = fretWireX(f);
+      svg.appendChild(svgEl('line', { x1:x, y1:topYAt(x)-2, x2:x, y2:bottomYAt(x)+2, stroke:'#cfcfd3', 'stroke-width':3 }));
+      svg.appendChild(svgEl('line', { x1:x, y1:topYAt(x)-2, x2:x, y2:bottomYAt(x)+2, stroke:'#ffffff', 'stroke-width':1, opacity:0.55 }));
+    }
+
+    // nut
+    svg.appendChild(svgEl('rect', {
+      x:NUT_X-4, y:neckTop-2, width:8, height:(neckBottom-neckTop)+4, rx:2,
+      fill:'#f2ede0', stroke:'#c3bb9f', 'stroke-width':1
+    }));
+
+    const filter = getStringFilter();
+
+    // pegs + string segments running into the headstock
+    for(let row=0; row<n; row++){
+      const s = n-1-row;
+      const t = n>1 ? 0.12 + row*(0.76/(n-1)) : 0.5;
+      const pegX = NUT_X + t*(HEAD_TIP_X-NUT_X);
+      const edgeY = neckTop + t*(topHeadY-neckTop);
+      const btnY = edgeY - PEG_POST_LEN;
+      const stringY = stringYAt(row, NUT_X);
+      const dim = filter[s] ? 1 : 0.28;
+      const thickness = 1.4 + row*0.55;
+      svg.appendChild(svgEl('line', { x1:NUT_X, y1:stringY, x2:pegX, y2:edgeY, stroke:'#333', 'stroke-width':thickness, opacity:dim }));
+      svg.appendChild(svgEl('line', { x1:NUT_X, y1:stringY, x2:pegX, y2:edgeY, stroke:'#eee', 'stroke-width':thickness*0.4, opacity:0.6*dim }));
+      svg.appendChild(svgEl('line', { x1:pegX, y1:edgeY, x2:pegX, y2:btnY, stroke:'#8a8a8e', 'stroke-width':3, opacity:dim }));
+      svg.appendChild(svgEl('circle', { cx:pegX, cy:btnY, r:PEG_R, fill:'url(#pegGrad)', stroke:'#3a3a3e', 'stroke-width':1, opacity:dim }));
+    }
+
+    // strings on the neck (row 0 = top = highest pitch = last index in strings[]) - splay outward toward the body
+    for(let row=0; row<n; row++){
+      const s = n-1-row;
+      const y1 = stringYAt(row, NUT_X), y2 = stringYAt(row, RIGHT_EDGE);
+      const thickness = 1.4 + row*0.55;
+      const dim = filter[s] ? 1 : 0.28;
+      svg.appendChild(svgEl('line', { x1:NUT_X, y1, x2:RIGHT_EDGE, y2, stroke:'#333', 'stroke-width':thickness, 'stroke-linecap':'round', opacity:dim }));
+      svg.appendChild(svgEl('line', { x1:NUT_X, y1, x2:RIGHT_EDGE, y2, stroke:'#eee', 'stroke-width':thickness*0.4, 'stroke-linecap':'round', opacity:0.6*dim }));
+    }
+
+    // fret number labels, following each fret's own board edge
+    for(let f=0; f<=12; f++){
+      const x = cellCenterX(f);
+      const t = svgEl('text', { class:'fret-num', x, y:bottomYAt(x)+20 });
+      t.textContent = f;
+      svg.appendChild(t);
+    }
+
+    function rowOf(s){ return (n-1)-s; }
+    function yOf(s, x){ return stringYAt(rowOf(s), x); }
+
+    if(state.reverseMode && !state.idle){
+      // reverse mode: tappable positions (before answering) or the full reveal (after)
+      const filter = getStringFilter();
+      const fretRange = getFretRange();
+      for(let s=0; s<n; s++){
+        if(!filter[s]) continue;
+        for(let f=fretRange.min; f<=fretRange.max; f++){
+          const x = cellCenterX(f), y = yOf(s, x);
+          const key = s+'-'+f;
+          const isTarget = reverseState.targets.some(t=> t.s===s && t.f===f);
+          const isWrong = reverseState.wrongPos && reverseState.wrongPos.s===s && reverseState.wrongPos.f===f;
+
+          if(state.answered){
+            if(isTarget){
+              svg.appendChild(svgEl('circle', { cx:x, cy:y, r:12, fill:'rgba(62,207,107,0.85)', stroke:'#1c6b34', 'stroke-width':1.5 }));
+              const label = svgEl('text', { x, y:y+4, 'text-anchor':'middle', 'font-size':10, 'font-weight':'bold', fill:'#062b12' });
+              label.textContent = pitchAt(strings[s], f);
+              svg.appendChild(label);
+            }
+            if(isWrong){
+              svg.appendChild(svgEl('circle', { cx:x, cy:y, r:14, fill:'rgba(255,95,95,0.9)', stroke:'#7a1414', 'stroke-width':1.5 }));
+              const label = svgEl('text', { x, y:y+4, 'text-anchor':'middle', 'font-size':10, 'font-weight':'bold', fill:'#3a0808' });
+              label.textContent = pitchAt(strings[s], f);
+              svg.appendChild(label);
+            }
+          } else {
+            const isFound = reverseState.found.has(key);
+            const circle = svgEl('circle', {
+              cx:x, cy:y, r:13,
+              fill: isFound ? 'rgba(62,207,107,0.85)' : 'rgba(255,255,255,0.07)',
+              stroke: isFound ? '#1c6b34' : 'rgba(255,255,255,0.4)',
+              'stroke-width': isFound ? 1.5 : 1.2,
+              style: 'cursor:pointer;'
+            });
+            circle.addEventListener('click', ()=> onTapPosition(s, f));
+            svg.appendChild(circle);
+          }
+        }
+      }
+    } else {
+      // matched-note highlights (only after answering)
+      if(state.answered && state.current){
+        const targetPc = state.current.pc;
+        for(let s=0; s<n; s++){
+          for(let f=0; f<=12; f++){
+            if(pitchAt(strings[s], f) !== targetPc) continue;
+            const x = cellCenterX(f), y = yOf(s, x);
+            svg.appendChild(svgEl('circle', { cx:x, cy:y, r:12, fill:'rgba(62,207,107,0.85)', stroke:'#1c6b34', 'stroke-width':1.5 }));
+            const label = svgEl('text', { x, y:y+4, 'text-anchor':'middle', 'font-size':10, 'font-weight':'bold', fill:'#062b12' });
+            label.textContent = pitchAt(strings[s], f);
+            svg.appendChild(label);
+          }
+        }
+      }
+
+      // quiz marker (drawn last, on top)
+      if(state.current){
+        const { s, f } = state.current;
+        const x = cellCenterX(f), y = yOf(s, x);
+        const ringColor = !state.answered ? 'var(--accent)' : (isLastAnswerCorrect ? 'var(--good)' : 'var(--bad)');
+        svg.appendChild(svgEl('circle', { cx:x, cy:y, r:16, fill:'none', stroke: ringColor, 'stroke-width':3 }));
+        if(!state.answered){
+          svg.appendChild(svgEl('circle', { cx:x, cy:y, r:16, fill: ringColor, opacity:0.25, class:'pulse-marker' }));
+          const q = svgEl('text', { x, y:y+4, 'text-anchor':'middle', 'font-size':13, 'font-weight':'bold', fill:'#fff' });
+          q.textContent = '?';
+          svg.appendChild(q);
+        }
+      }
+    }
+
+    renderStaff();
+  }
+
+  // ---------- rendering: staff notation ----------
+  const STAFF_LINE_GAP = 11; // px between adjacent staff lines
+  const STAFF_HALF = STAFF_LINE_GAP/2; // px per diatonic step
+  const TREBLE_BOTTOM_STEP = 4*7 + LETTER_STEP.E; // bottom line = E4
+  const BASS_BOTTOM_STEP = 2*7 + LETTER_STEP.G;   // bottom line = G2
+  const STAFF_X0 = 54, STAFF_X1 = 190, NOTE_X = 150;
+
+  // Every possible note step for the current instrument (all strings/frets), so the staff's
+  // reserved height covers the full range and never resizes from one question to the next.
+  function staffStepRange(){
+    const strings = getCurrentTuning();
+    let minStep = Infinity, maxStep = -Infinity;
+    for(let s=0; s<strings.length; s++){
+      for(let f=0; f<=12; f++){
+        const { noteName, octave } = pitchWithOctaveAt(s, f);
+        const writtenOctave = octave + 1;
+        const step = writtenOctave*7 + LETTER_STEP[noteName[0]];
+        if(step < minStep) minStep = step;
+        if(step > maxStep) maxStep = step;
+      }
+    }
+    return { minStep, maxStep };
+  }
+
+  function renderStaff(){
+    if(!staffSvg) return;
+    staffSvg.innerHTML = '';
+    if(state.reverseMode) return; // reverse mode's target is a pitch class, not a single notated pitch
+
+    const isBass = settings.instrumentId.indexOf('bass') === 0;
+    const bottomStep = isBass ? BASS_BOTTOM_STEP : TREBLE_BOTTOM_STEP;
+    const topStep = bottomStep + 8;
+    const reveal = settings.showStaffBeforeAnswer || state.answered;
+
+    let noteStep = null, letter = null, isSharp = false;
+    if(state.current && reveal){
+      const { s, f } = state.current;
+      const { noteName, octave } = pitchWithOctaveAt(s, f);
+      letter = noteName[0];
+      isSharp = noteName.length > 1;
+      const writtenOctave = octave + 1; // guitar/bass notation sounds an octave below what's written
+      noteStep = writtenOctave*7 + LETTER_STEP[letter];
+    }
+
+    // reserve space for the full playable range, not just the current note, so the
+    // staff's height stays constant across questions
+    const range = staffStepRange();
+    const belowExtra = Math.max(0, bottomStep-range.minStep);
+    const aboveExtra = Math.max(0, range.maxStep-topStep);
+    const PAD = 26;
+    const height = (8+belowExtra+aboveExtra)*STAFF_HALF + PAD*2;
+    const bottomLineY = height - PAD - belowExtra*STAFF_HALF;
+    const width = 220;
+    staffSvg.setAttribute('viewBox', `0 0 ${width} ${height}`);
+
+    if(!state.current){
+      return;
+    }
+
+    function yForStep(step){ return bottomLineY - (step-bottomStep)*STAFF_HALF; }
+
+    // 5 staff lines
+    for(let i=0;i<5;i++){
+      const y = yForStep(bottomStep+i*2);
+      staffSvg.appendChild(svgEl('line', { x1:STAFF_X0, y1:y, x2:STAFF_X1, y2:y, stroke:'#9a9aa2', 'stroke-width':1.3 }));
+    }
+
+    // clef
+    const clefChar = isBass ? '𝄢' : '𝄞';
+    const clefAnchorStep = isBass ? bottomStep+6 : bottomStep+2; // bass: F3 line, treble: G4 line
+    const clefText = svgEl('text', {
+      x:STAFF_X0+6, y:yForStep(clefAnchorStep)+ (isBass?4:16),
+      'font-size': isBass?34:52, fill:'#c7c7cf', 'font-family':'serif'
+    });
+    clefText.textContent = clefChar;
+    staffSvg.appendChild(clefText);
+
+    if(!reveal){
+      const qy = bottomLineY - 4*STAFF_HALF;
+      const q = svgEl('text', { x:NOTE_X, y:qy+7, 'text-anchor':'middle', 'font-size':22, 'font-weight':'bold', fill:'var(--accent)' });
+      q.textContent = '?';
+      staffSvg.appendChild(q);
+      return;
+    }
+
+    // ledger lines
+    const ledgerSteps = [];
+    if(noteStep < bottomStep){
+      for(let st=bottomStep-2; st>=noteStep; st-=2) ledgerSteps.push(st);
+    } else if(noteStep > topStep){
+      for(let st=topStep+2; st<=noteStep; st+=2) ledgerSteps.push(st);
+    }
+    ledgerSteps.forEach(st=>{
+      const y = yForStep(st);
+      staffSvg.appendChild(svgEl('line', { x1:NOTE_X-12, y1:y, x2:NOTE_X+12, y2:y, stroke:'#9a9aa2', 'stroke-width':1.3 }));
+    });
+
+    const noteY = yForStep(noteStep);
+
+    // sharp sign
+    if(isSharp){
+      const sharp = svgEl('text', { x:NOTE_X-22, y:noteY+5, 'text-anchor':'middle', 'font-size':16, 'font-weight':'bold', fill:'#fff' });
+      sharp.textContent = '♯';
+      staffSvg.appendChild(sharp);
+    }
+
+    // stem
+    const middleStep = bottomStep+4;
+    if(noteStep < middleStep){
+      staffSvg.appendChild(svgEl('line', { x1:NOTE_X+6, y1:noteY, x2:NOTE_X+6, y2:noteY-30, stroke:'#fff', 'stroke-width':1.4 }));
+    } else {
+      staffSvg.appendChild(svgEl('line', { x1:NOTE_X-6, y1:noteY, x2:NOTE_X-6, y2:noteY+30, stroke:'#fff', 'stroke-width':1.4 }));
+    }
+
+    // notehead
+    const head = svgEl('ellipse', { cx:NOTE_X, cy:noteY, rx:7, ry:5.5, fill:'#fff', transform:`rotate(-18 ${NOTE_X} ${noteY})` });
+    staffSvg.appendChild(head);
+  }
+
+  // ---------- rendering: choices ----------
+  let isLastAnswerCorrect = false;
+
+  function shuffleArray(arr){
+    for(let i=arr.length-1; i>0; i--){
+      const j = Math.floor(Math.random()*(i+1));
+      [arr[i], arr[j]] = [arr[j], arr[i]];
+    }
+    return arr;
+  }
+
+  function renderChoices(){
+    choicesEl.innerHTML = '';
+    const pool = settings.naturalOnly ? NATURALS : CHROMATIC;
+    const correctPc = state.current.pc;
+    const choiceCount = Math.min(5, pool.length);
+    const distractors = shuffleArray(pool.filter(pc => pc !== correctPc)).slice(0, choiceCount-1);
+    const choices = shuffleArray([correctPc, ...distractors]);
+    choices.forEach(pc=>{
+      const btn = document.createElement('button');
+      btn.className = 'choice-btn';
+      btn.innerHTML = `<span class="solfege">${SOLFEGE[pc]}</span><span class="letter">${pc}</span>`;
+      btn.addEventListener('click', ()=> onAnswer(pc, btn));
+      choicesEl.appendChild(btn);
+    });
+  }
+
+  function styleAnswerButtons(correctPc, chosenBtn){
+    Array.from(choicesEl.children).forEach(b=>{
+      b.setAttribute('disabled','disabled');
+      const letter = b.querySelector('.letter').textContent;
+      if(letter === correctPc){ b.classList.add('correct'); }
+      else if(b === chosenBtn){ b.classList.add('wrong'); }
+      else { b.classList.add('dim'); }
+    });
+  }
+
+  // ---------- per-answer time limit ----------
+  function stopAnswerTimer(){
+    if(answerTimer.intervalId){ clearInterval(answerTimer.intervalId); answerTimer.intervalId = null; }
+    answerTimerWrap.style.display = 'none';
+  }
+
+  function hasActiveQuestion(){
+    return state.reverseMode ? reverseState.targets.length>0 : !!state.current;
+  }
+
+  function startAnswerTimer(){
+    stopAnswerTimer();
+    const limit = settings.answerTimeLimit;
+    if(!limit || !hasActiveQuestion() || state.answered) return;
+    answerTimerWrap.style.display = 'block';
+    const durationMs = limit*1000;
+    function tick(){
+      const remaining = Math.max(0, durationMs - (Date.now()-state.questionStartTime));
+      answerTimerFill.style.width = (remaining/durationMs*100)+'%';
+      answerTimerFill.classList.toggle('urgent', remaining < durationMs*0.3);
+      if(remaining<=0){
+        stopAnswerTimer();
+        handleAnswerTimeout();
+      }
+    }
+    tick();
+    answerTimer.intervalId = setInterval(tick, 100);
+  }
+
+  function handleAnswerTimeout(){
+    if(state.answered) return;
+    if(state.reverseMode){ failReverseQuestion('timeout'); return; }
+    state.answered = true;
+    isLastAnswerCorrect = false;
+    const correctPc = state.current.pc;
+    const elapsedMs = Date.now() - state.questionStartTime;
+
+    stats.attempts++;
+    saveStats();
+
+    const key = weakKey(state.current.s, state.current.f);
+    const rec = weakData[key] || { wrong:0, correct:0, timeSum:0, timeCount:0, slow:0 };
+    rec.wrong++;
+    rec.timeSum = (rec.timeSum||0) + elapsedMs;
+    rec.timeCount = (rec.timeCount||0) + 1;
+    rec.slow = (rec.slow||0) + 1;
+    weakData[key] = rec;
+    saveWeak();
+
+    styleAnswerButtons(correctPc, null);
+
+    let msg = `⏰ 時間切れ… 正解は ${SOLFEGE[correctPc]} (${correctPc}) でした。`;
+    if(FLAT_ALIAS[correctPc]){
+      msg += ` ※ ${FLAT_SOLFEGE[correctPc]} (${FLAT_ALIAS[correctPc]}) とも呼ばれます。`;
+    }
+    feedbackEl.textContent = msg;
+    feedbackEl.className = 'feedback bad';
+
+    questionText.textContent = '同じ音名の位置をすべて表示しています';
+    renderFretboard();
+    updateStatsDisplay();
+    renderWeakList();
+    nextBtn.classList.remove('hidden');
+  }
+
+  function onAnswer(pc, btnEl){
+    if(state.answered) return;
+    stopAnswerTimer();
+    state.answered = true;
+    const correctPc = state.current.pc;
+    isLastAnswerCorrect = (pc === correctPc);
+    const elapsedMs = Date.now() - state.questionStartTime;
+
+    stats.attempts++;
+    if(isLastAnswerCorrect) stats.correct++;
+    saveStats();
+
+    const key = weakKey(state.current.s, state.current.f);
+    const rec = weakData[key] || { wrong:0, correct:0, timeSum:0, timeCount:0, slow:0 };
+    if(isLastAnswerCorrect) rec.correct++; else rec.wrong++;
+    rec.timeSum = (rec.timeSum||0) + elapsedMs;
+    rec.timeCount = (rec.timeCount||0) + 1;
+    if(elapsedMs > SLOW_MS) rec.slow = (rec.slow||0) + 1;
+    weakData[key] = rec;
+    saveWeak();
+
+    styleAnswerButtons(correctPc, btnEl);
+
+    let msg = isLastAnswerCorrect
+      ? `⭕ 正解！ ${SOLFEGE[correctPc]} (${correctPc}) です。`
+      : `❌ 不正解… 正解は ${SOLFEGE[correctPc]} (${correctPc}) でした。`;
+    if(FLAT_ALIAS[correctPc]){
+      msg += ` ※ ${FLAT_SOLFEGE[correctPc]} (${FLAT_ALIAS[correctPc]}) とも呼ばれます。`;
+    }
+    msg += ` (回答時間 ${(elapsedMs/1000).toFixed(1)}秒)`;
+    feedbackEl.textContent = msg;
+    feedbackEl.className = 'feedback ' + (isLastAnswerCorrect ? 'good' : 'bad');
+
+    questionText.textContent = '同じ音名の位置をすべて表示しています';
+    renderFretboard();
+    updateStatsDisplay();
+    renderWeakList();
+    nextBtn.classList.remove('hidden');
+  }
+
+  // ---------- reverse mode: tap every matching position ----------
+  function onTapPosition(s, f){
+    if(state.answered || !state.reverseMode || state.idle) return;
+    const key = s+'-'+f;
+    const isTarget = reverseState.targets.some(t=> t.s===s && t.f===f);
+
+    if(isTarget){
+      if(reverseState.found.has(key)) return;
+      reverseState.found.add(key);
+      updateReversePromptUI();
+      if(reverseState.found.size === reverseState.targets.length){
+        completeReverseQuestion();
+      } else {
+        renderFretboard();
+      }
+      return;
+    }
+
+    reverseState.wrongPos = { s, f };
+    failReverseQuestion('wrong-tap');
+  }
+
+  function completeReverseQuestion(){
+    state.answered = true;
+    stopAnswerTimer();
+    isLastAnswerCorrect = true;
+    const elapsedMs = Date.now() - state.questionStartTime;
+
+    stats.attempts++;
+    stats.correct++;
+    saveStats();
+
+    reverseState.targets.forEach(t=>{
+      const key = weakKey(t.s, t.f);
+      const rec = weakData[key] || { wrong:0, correct:0, timeSum:0, timeCount:0, slow:0 };
+      rec.correct++;
+      rec.timeSum = (rec.timeSum||0) + elapsedMs;
+      rec.timeCount = (rec.timeCount||0) + 1;
+      weakData[key] = rec;
+    });
+    saveWeak();
+
+    feedbackEl.textContent = `⭕ 正解！ ${SOLFEGE[reverseState.pc]} (${reverseState.pc}) を全て見つけました。 (回答時間 ${(elapsedMs/1000).toFixed(1)}秒)`;
+    feedbackEl.className = 'feedback good';
+
+    questionText.textContent = '正解ポジションを表示しています';
+    giveUpBtn.style.display = 'none';
+    renderFretboard();
+    updateStatsDisplay();
+    renderWeakList();
+    nextBtn.classList.remove('hidden');
+  }
+
+  function failReverseQuestion(reason){
+    if(state.answered) return;
+    state.answered = true;
+    stopAnswerTimer();
+    isLastAnswerCorrect = false;
+    const elapsedMs = Date.now() - state.questionStartTime;
+
+    stats.attempts++;
+    saveStats();
+
+    reverseState.targets.forEach(t=>{
+      const key = weakKey(t.s, t.f);
+      const rec = weakData[key] || { wrong:0, correct:0, timeSum:0, timeCount:0, slow:0 };
+      if(reverseState.found.has(t.s+'-'+t.f)) rec.correct++; else rec.wrong++;
+      rec.timeSum = (rec.timeSum||0) + elapsedMs;
+      rec.timeCount = (rec.timeCount||0) + 1;
+      if(reason==='timeout') rec.slow = (rec.slow||0) + 1;
+      weakData[key] = rec;
+    });
+    if(reverseState.wrongPos){
+      const wp = reverseState.wrongPos;
+      const key = weakKey(wp.s, wp.f);
+      const rec = weakData[key] || { wrong:0, correct:0, timeSum:0, timeCount:0, slow:0 };
+      rec.wrong++;
+      rec.timeSum = (rec.timeSum||0) + elapsedMs;
+      rec.timeCount = (rec.timeCount||0) + 1;
+      weakData[key] = rec;
+    }
+    saveWeak();
+
+    const total = reverseState.targets.length;
+    const found = reverseState.found.size;
+    let msg;
+    if(reason==='wrong-tap') msg = `❌ 不正解… 違う位置をタップしました。`;
+    else if(reason==='timeout') msg = `⏰ 時間切れ…`;
+    else msg = `🏳️ ギブアップしました。`;
+    msg += ` 正解は ${SOLFEGE[reverseState.pc]} (${reverseState.pc}) の${total}箇所でした。(${found}/${total} 発見)`;
+    feedbackEl.textContent = msg;
+    feedbackEl.className = 'feedback bad';
+
+    questionText.textContent = '正解ポジションを表示しています';
+    giveUpBtn.style.display = 'none';
+    renderFretboard();
+    updateStatsDisplay();
+    renderWeakList();
+    nextBtn.classList.remove('hidden');
+  }
+
+  // ---------- stats / weak list ----------
+  function updateStatsDisplay(){
+    accuracyText.textContent = stats.attempts ? Math.round(stats.correct/stats.attempts*100)+'%' : '--';
+    attemptsText.textContent = stats.attempts;
+  }
+
+  function renderWeakList(){
+    const tKey = tuningKey();
+    const strings = getCurrentTuning();
+    const n = strings.length;
+    const prefix = tKey + '|';
+    const entries = Object.keys(weakData)
+      .filter(k=> k.startsWith(prefix))
+      .map(k=>{
+        const rest = k.slice(prefix.length).split('|');
+        const s = +rest[0], f = +rest[1];
+        const rec = weakData[k];
+        return {
+          s, f, pc: pitchAt(strings[s], f),
+          wrong: rec.wrong||0, correct: rec.correct||0, slow: rec.slow||0,
+          avgSec: rec.timeCount ? (rec.timeSum/rec.timeCount/1000) : null
+        };
+      })
+      .filter(e=> e.wrong>0 || e.slow>0)
+      .sort((a,b)=>{
+        const rateA = (a.wrong*3 + a.slow*1.5)/(a.wrong+a.correct+1);
+        const rateB = (b.wrong*3 + b.slow*1.5)/(b.wrong+b.correct+1);
+        return rateB - rateA || b.wrong - a.wrong;
+      })
+      .slice(0,5);
+
+    weakListEl.innerHTML = '';
+    if(entries.length===0){
+      const li = document.createElement('li');
+      li.className = 'empty';
+      li.textContent = 'まだ苦手データはありません。問題を解いてみましょう。';
+      weakListEl.appendChild(li);
+      return;
+    }
+    entries.forEach(e=>{
+      const stringNum = n - e.s;
+      const li = document.createElement('li');
+      let text = `${stringNum}弦 ${e.f}F: ${SOLFEGE[e.pc]} (${e.pc}) — 間違い${e.wrong}回`;
+      if(e.slow>0) text += ` / 回答遅め${e.slow}回`;
+      if(e.avgSec!==null) text += ` (平均${e.avgSec.toFixed(1)}秒)`;
+      li.textContent = text;
+      weakListEl.appendChild(li);
+    });
+  }
+
+  // ---------- tuning panel ----------
+  function renderTuningPanel(){
+    tuningPanel.innerHTML = '';
+    const strings = tunings[settings.instrumentId];
+    const n = strings.length;
+    for(let row=0; row<n; row++){
+      const s = n-1-row;
+      const stringNum = n-s;
+      const wrap = document.createElement('div');
+      wrap.className = 'tuning-row';
+      const label = document.createElement('label');
+      label.textContent = `${stringNum}弦`;
+      const select = document.createElement('select');
+      CHROMATIC.forEach(pc=>{
+        const opt = document.createElement('option');
+        opt.value = pc;
+        opt.textContent = `${pc} (${SOLFEGE[pc]})`;
+        if(pc === strings[s]) opt.selected = true;
+        select.appendChild(opt);
+      });
+      select.addEventListener('change', ()=>{
+        strings[s] = select.value;
+        saveTunings();
+        showIdleState();
+        renderWeakList();
+      });
+      wrap.appendChild(label);
+      wrap.appendChild(select);
+      tuningPanel.appendChild(wrap);
+    }
+    const actions = document.createElement('div');
+    actions.className = 'tuning-actions';
+    const resetBtn = document.createElement('button');
+    resetBtn.type = 'button';
+    resetBtn.textContent = 'デフォルトに戻す';
+    resetBtn.addEventListener('click', ()=>{
+      tunings[settings.instrumentId] = DEFAULT_TUNINGS[settings.instrumentId].slice();
+      saveTunings();
+      renderTuningPanel();
+      showIdleState();
+      renderWeakList();
+    });
+    actions.appendChild(resetBtn);
+    tuningPanel.appendChild(actions);
+  }
+
+  // ---------- string filter panel ----------
+  function renderStringFilterPanel(){
+    stringFilterList.innerHTML = '';
+    const strings = getCurrentTuning();
+    const n = strings.length;
+    const filter = getStringFilter();
+    for(let row=0; row<n; row++){
+      const s = n-1-row;
+      const stringNum = n-s;
+      const label = document.createElement('label');
+      label.className = 'filter-row';
+      const cb = document.createElement('input');
+      cb.type = 'checkbox';
+      cb.checked = !!filter[s];
+      cb.addEventListener('change', ()=>{
+        if(!cb.checked){
+          const anyLeft = filter.some((v,i)=> i!==s && v);
+          if(!anyLeft){
+            cb.checked = true;
+            alert('少なくとも1本は出題対象の弦を選択してください。');
+            return;
+          }
+        }
+        filter[s] = cb.checked;
+        saveSettings();
+        showIdleState();
+      });
+      label.appendChild(cb);
+      label.appendChild(document.createTextNode(` ${stringNum}弦 (${strings[s]})`));
+      stringFilterList.appendChild(label);
+    }
+  }
+
+  // ---------- fret range controls ----------
+  function renderFretRangeControls(){
+    const range = getFretRange();
+    [fretMinSelect, fretMaxSelect].forEach(sel=>{
+      sel.innerHTML = '';
+      for(let f=0; f<=12; f++){
+        const opt = document.createElement('option');
+        opt.value = f;
+        opt.textContent = f;
+        sel.appendChild(opt);
+      }
+    });
+    fretMinSelect.value = range.min;
+    fretMaxSelect.value = range.max;
+  }
+
+  fretMinSelect.addEventListener('change', ()=>{
+    const range = getFretRange();
+    let min = parseInt(fretMinSelect.value, 10);
+    if(min > range.max){ range.max = min; fretMaxSelect.value = min; }
+    range.min = min;
+    saveSettings();
+    showIdleState();
+  });
+
+  fretMaxSelect.addEventListener('change', ()=>{
+    const range = getFretRange();
+    let max = parseInt(fretMaxSelect.value, 10);
+    if(max < range.min){ range.min = max; fretMinSelect.value = max; }
+    range.max = max;
+    saveSettings();
+    showIdleState();
+  });
+
+  // ---------- mode / UI wiring ----------
+  function updateModeUI(){
+    reviewModeBtn.classList.toggle('active', state.reviewMode);
+    reverseModeBtn.classList.toggle('active', state.reverseMode);
+    const labels = [];
+    if(state.reverseMode) labels.push('🔄 逆引きモード');
+    if(state.reviewMode) labels.push('🔁 苦手問題復習モード');
+    modeLabel.textContent = labels.join(' + ');
+  }
+
+  instrumentSelect.addEventListener('change', ()=>{
+    settings.instrumentId = instrumentSelect.value;
+    saveSettings();
+    renderTuningPanel();
+    renderStringFilterPanel();
+    showIdleState();
+    renderWeakList();
+  });
+
+  naturalOnlyToggle.addEventListener('change', ()=>{
+    settings.naturalOnly = naturalOnlyToggle.checked;
+    saveSettings();
+    showIdleState();
+  });
+
+  staffRevealToggle.addEventListener('change', ()=>{
+    settings.showStaffBeforeAnswer = staffRevealToggle.checked;
+    saveSettings();
+    renderStaff();
+  });
+
+  answerTimeLimitSelect.addEventListener('change', ()=>{
+    settings.answerTimeLimit = parseInt(answerTimeLimitSelect.value, 10) || 0;
+    saveSettings();
+    showIdleState();
+  });
+
+  tuningEditBtn.addEventListener('click', ()=>{
+    tuningPanel.classList.toggle('open');
+    stringFilterPanel.classList.remove('open');
+  });
+
+  stringFilterBtn.addEventListener('click', ()=>{
+    stringFilterPanel.classList.toggle('open');
+    tuningPanel.classList.remove('open');
+  });
+
+  reviewModeBtn.addEventListener('click', ()=>{
+    state.reviewMode = !state.reviewMode;
+    updateModeUI();
+    showIdleState();
+  });
+
+  reverseModeBtn.addEventListener('click', ()=>{
+    state.reverseMode = !state.reverseMode;
+    updateModeUI();
+    showIdleState();
+  });
+
+  giveUpBtn.addEventListener('click', ()=>{
+    if(state.reverseMode && !state.answered && !state.idle) failReverseQuestion('giveup');
+  });
+
+  nextBtn.addEventListener('click', nextQuestion);
+
+  resetDataBtn.addEventListener('click', ()=>{
+    if(!confirm('正解率・苦手ポジションの記録をすべて削除します。よろしいですか？')) return;
+    weakData = {};
+    stats = { attempts:0, correct:0 };
+    saveWeak();
+    saveStats();
+    updateStatsDisplay();
+    renderWeakList();
+  });
+
+  // ---------- init ----------
+  renderTuningPanel();
+  renderStringFilterPanel();
+  renderFretRangeControls();
+  updateModeUI();
+  updateStatsDisplay();
+  renderWeakList();
+  nextQuestion();
+})();
+</script>
+
+<script>
+(function(){
+  "use strict";
+
+  const LS_METRO = 'fbt_metronome';
+  function loadJSON(key, fallback){
+    try{
+      const raw = localStorage.getItem(key);
+      if(!raw) return fallback;
+      return JSON.parse(raw);
+    }catch(e){ return fallback; }
+  }
+  function saveJSON(key, val){
+    try{ localStorage.setItem(key, JSON.stringify(val)); }catch(e){}
+  }
+
+  const metro = Object.assign({ bpm:120, beats:4, subdivision:1 }, loadJSON(LS_METRO, {}));
+  function saveMetro(){ saveJSON(LS_METRO, { bpm:metro.bpm, beats:metro.beats, subdivision:metro.subdivision }); }
+
+  // ---------- DOM refs ----------
+  const bpmInput = document.getElementById('bpmInput');
+  const bpmSlider = document.getElementById('bpmSlider');
+  const bpmDownBtn = document.getElementById('bpmDownBtn');
+  const bpmUpBtn = document.getElementById('bpmUpBtn');
+  const tapTempoBtn = document.getElementById('tapTempoBtn');
+  const beatsSelect = document.getElementById('beatsSelect');
+  const subdivisionButtons = document.getElementById('subdivisionButtons');
+  const beatDots = document.getElementById('beatDots');
+  const metroPlayBtn = document.getElementById('metroPlayBtn');
+  const tabMetronome = document.getElementById('tabMetronome');
+
+  bpmInput.value = metro.bpm;
+  bpmSlider.value = metro.bpm;
+  beatsSelect.value = String(metro.beats);
+  Array.from(subdivisionButtons.children).forEach(b=>{
+    b.classList.toggle('active', parseInt(b.dataset.sub,10)===metro.subdivision);
+  });
+
+  function clampBpm(v){ return Math.max(20, Math.min(300, v)); }
+
+  function setBpm(v){
+    metro.bpm = clampBpm(Math.round(v));
+    bpmInput.value = metro.bpm;
+    bpmSlider.value = metro.bpm;
+    saveMetro();
+  }
+
+  bpmInput.addEventListener('change', ()=> setBpm(parseInt(bpmInput.value,10) || metro.bpm));
+  bpmSlider.addEventListener('input', ()=> setBpm(parseInt(bpmSlider.value,10)));
+  bpmDownBtn.addEventListener('click', ()=> setBpm(metro.bpm - 1));
+  bpmUpBtn.addEventListener('click', ()=> setBpm(metro.bpm + 1));
+
+  beatsSelect.addEventListener('change', ()=>{
+    metro.beats = parseInt(beatsSelect.value, 10);
+    saveMetro();
+    renderBeatDots();
+  });
+
+  Array.from(subdivisionButtons.children).forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      metro.subdivision = parseInt(btn.dataset.sub, 10);
+      Array.from(subdivisionButtons.children).forEach(b=> b.classList.toggle('active', b===btn));
+      saveMetro();
+      renderBeatDots();
+    });
+  });
+
+  // ---------- tap tempo ----------
+  let tapTimes = [];
+  function handleTap(){
+    const now = performance.now();
+    if(tapTimes.length && now - tapTimes[tapTimes.length-1] > 2000){
+      tapTimes = [];
+    }
+    tapTimes.push(now);
+    if(tapTimes.length > 8) tapTimes.shift();
+    if(tapTimes.length >= 2){
+      const intervals = [];
+      for(let i=1;i<tapTimes.length;i++) intervals.push(tapTimes[i]-tapTimes[i-1]);
+      const avgMs = intervals.reduce((a,b)=>a+b,0)/intervals.length;
+      setBpm(60000/avgMs);
+    }
+    tapTempoBtn.classList.add('active');
+    setTimeout(()=> tapTempoBtn.classList.remove('active'), 100);
+  }
+
+  tapTempoBtn.addEventListener('click', handleTap);
+
+  document.addEventListener('keydown', (e)=>{
+    if(e.code !== 'Space') return;
+    if(!tabMetronome.classList.contains('active')) return;
+    const tag = document.activeElement ? document.activeElement.tagName : '';
+    if(tag==='INPUT' || tag==='SELECT' || tag==='TEXTAREA' || tag==='BUTTON') return;
+    e.preventDefault();
+    handleTap();
+  });
+
+  // ---------- beat dots ----------
+  function renderBeatDots(){
+    beatDots.innerHTML = '';
+    const total = metro.beats * metro.subdivision;
+    for(let i=0; i<total; i++){
+      const dot = document.createElement('div');
+      dot.className = 'beat-dot' + (i % metro.subdivision === 0 ? ' downbeat' : '');
+      beatDots.appendChild(dot);
+    }
+  }
+  renderBeatDots();
+
+  function flashDot(i){
+    const dots = beatDots.children;
+    Array.from(dots).forEach((d,idx)=> d.classList.toggle('on', idx===i));
+    setTimeout(()=>{ if(dots[i]) dots[i].classList.remove('on'); }, 90);
+  }
+
+  // ---------- audio scheduler ----------
+  let audioCtx = null;
+  let isPlaying = false;
+  let currentClick = 0;
+  let nextNoteTime = 0;
+  let schedulerId = null;
+  const SCHEDULE_AHEAD = 0.1;
+  const LOOKAHEAD_MS = 25;
+
+  function scheduleClick(clickIndex, time){
+    const ctx = audioCtx;
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    let freq, vol;
+    if(clickIndex === 0){ freq = 1000; vol = 1.0; }
+    else if(clickIndex % metro.subdivision === 0){ freq = 800; vol = 0.8; }
+    else { freq = 520; vol = 0.45; }
+    osc.frequency.value = freq;
+    gain.gain.setValueAtTime(vol, time);
+    gain.gain.exponentialRampToValueAtTime(0.001, time + 0.05);
+    osc.start(time);
+    osc.stop(time + 0.06);
+
+    const delayMs = Math.max(0, (time - ctx.currentTime) * 1000);
+    setTimeout(()=>{ if(isPlaying) flashDot(clickIndex); }, delayMs);
+  }
+
+  function advanceNote(){
+    const secondsPerBeat = 60.0 / metro.bpm;
+    const secondsPerClick = secondsPerBeat / metro.subdivision;
+    nextNoteTime += secondsPerClick;
+    currentClick = (currentClick + 1) % (metro.beats * metro.subdivision);
+  }
+
+  function scheduler(){
+    while(nextNoteTime < audioCtx.currentTime + SCHEDULE_AHEAD){
+      scheduleClick(currentClick, nextNoteTime);
+      advanceNote();
+    }
+    schedulerId = setTimeout(scheduler, LOOKAHEAD_MS);
+  }
+
+  function startMetronome(){
+    if(isPlaying) return;
+    if(!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    if(audioCtx.state === 'suspended') audioCtx.resume();
+    isPlaying = true;
+    currentClick = 0;
+    nextNoteTime = audioCtx.currentTime + 0.05;
+    scheduler();
+    metroPlayBtn.textContent = '■ 停止';
+    metroPlayBtn.classList.add('playing');
+  }
+
+  function stopMetronome(){
+    isPlaying = false;
+    clearTimeout(schedulerId);
+    metroPlayBtn.textContent = '▶ 再生';
+    metroPlayBtn.classList.remove('playing');
+    Array.from(beatDots.children).forEach(d=> d.classList.remove('on'));
+  }
+
+  metroPlayBtn.addEventListener('click', ()=>{
+    if(isPlaying) stopMetronome(); else startMetronome();
+  });
+})();
+</script>
+</body>
+</html>
