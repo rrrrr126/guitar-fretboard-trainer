@@ -151,7 +151,7 @@
     padding:14px 10px 6px;
     overflow-x:auto;
   }
-  svg#fretboard{ width:100%; height:auto; display:block; }
+  svg#fretboard, svg#chordFretboard{ width:100%; height:auto; display:block; }
   .fret-num{ fill: var(--text-dim); font-size:11px; text-anchor:middle; }
   .question-area{ text-align:center; }
   #questionText{ margin:0 0 10px; font-size:0.95rem; color:var(--text-dim); }
@@ -269,6 +269,20 @@
     padding:14px 40px; font-size:1.05rem;
   }
   .metro-play-btn.playing{ background:var(--bad); }
+
+  .chord-display{ text-align:center; }
+  .chord-name{ font-size:2rem; font-weight:bold; min-height:2.4em; display:flex; align-items:center; justify-content:center; }
+  .chord-notes{
+    display:flex; flex-wrap:wrap; gap:6px; justify-content:center;
+    min-height:1.6em;
+  }
+  .note-chip{
+    padding:3px 9px;
+    border-radius:6px;
+    font-size:0.8rem;
+    font-weight:bold;
+    color:#1a1a1a;
+  }
 </style>
 </head>
 <body>
@@ -279,6 +293,7 @@
   <div class="tab-bar">
     <button class="tab-btn active" id="tabBtnNotes" type="button" data-tab="notes">🎵 音名トレーニング</button>
     <button class="tab-btn" id="tabBtnMetronome" type="button" data-tab="metronome">🎼 メトロノーム</button>
+    <button class="tab-btn" id="tabBtnChord" type="button" data-tab="chord">🎸 コード判定</button>
   </div>
 
   <div id="tabNotes" class="tab-panel active">
@@ -418,6 +433,21 @@
       <button id="metroPlayBtn" class="metro-play-btn" type="button">▶ 再生</button>
     </section>
   </div>
+
+  <div id="tabChord" class="tab-panel">
+    <section class="chord-display">
+      <div id="chordName" class="chord-name">指板をタップしてください</div>
+      <div id="chordNotes" class="chord-notes"></div>
+    </section>
+
+    <section class="fretboard-wrap">
+      <svg id="chordFretboard" xmlns="http://www.w3.org/2000/svg"></svg>
+    </section>
+
+    <div class="footer-actions">
+      <button id="chordClearBtn" type="button">クリア</button>
+    </div>
+  </div>
 </div>
 
 <script>
@@ -426,7 +456,8 @@
   const tabBtns = document.querySelectorAll('.tab-btn');
   const tabPanels = {
     notes: document.getElementById('tabNotes'),
-    metronome: document.getElementById('tabMetronome')
+    metronome: document.getElementById('tabMetronome'),
+    chord: document.getElementById('tabChord')
   };
   tabBtns.forEach(btn=>{
     btn.addEventListener('click', ()=>{
@@ -1838,6 +1869,326 @@
   metroPlayBtn.addEventListener('click', ()=>{
     if(isPlaying) stopMetronome(); else startMetronome();
   });
+})();
+</script>
+
+<script>
+(function(){
+  "use strict";
+
+  const CHROMATIC = ['C','C#','D','D#','E','F','F#','G','G#','A','A#','B'];
+  const NOTE_INDEX = Object.fromEntries(CHROMATIC.map((n,i)=>[n,i]));
+  const SOLFEGE = {
+    C:'ド', 'C#':'ド#', D:'レ', 'D#':'レ#', E:'ミ', F:'ファ', 'F#':'ファ#',
+    G:'ソ', 'G#':'ソ#', A:'ラ', 'A#':'ラ#', B:'シ'
+  };
+  const STRINGS = ['E','A','D','G','B','E']; // low to high, standard guitar, fixed
+  const OCTAVES = [2,2,3,3,3,4];
+  const N = STRINGS.length;
+
+  function pitchAt(s, f){ return CHROMATIC[(NOTE_INDEX[STRINGS[s]] + f) % 12]; }
+  function absPitch(s, f){ return OCTAVES[s]*12 + NOTE_INDEX[STRINGS[s]] + f; }
+
+  // one distinct color per pitch class (C..B), evenly spaced around the color wheel,
+  // so the same note always reads as the same color wherever it appears on the neck
+  const PITCH_COLORS = {};
+  CHROMATIC.forEach((pc,i)=>{
+    const hue = i*30;
+    PITCH_COLORS[pc] = { fill:`hsl(${hue},72%,56%)`, stroke:`hsl(${hue},72%,28%)` };
+  });
+
+  const DEGREE_LABELS = ['Ⅰ','♭Ⅱ','Ⅱ','♭Ⅲ','Ⅲ','Ⅳ','♭Ⅴ','Ⅴ','♯Ⅴ','Ⅵ','♭Ⅶ','Ⅶ'];
+  function degreeOf(pc, root){
+    return DEGREE_LABELS[((NOTE_INDEX[pc]-NOTE_INDEX[root])+12)%12];
+  }
+
+  // ---------- chord detection ----------
+  // [suffix, interval set from root], ordered from most to least common for tie-breaking
+  const CHORD_FORMULAS = [
+    ['', [0,4,7]],
+    ['m', [0,3,7]],
+    ['7', [0,4,7,10]],
+    ['maj7', [0,4,7,11]],
+    ['m7', [0,3,7,10]],
+    ['sus4', [0,5,7]],
+    ['sus2', [0,2,7]],
+    ['6', [0,4,7,9]],
+    ['m6', [0,3,7,9]],
+    ['dim', [0,3,6]],
+    ['aug', [0,4,8]],
+    ['add9', [0,2,4,7]],
+    ['9', [0,2,4,7,10]],
+    ['maj9', [0,2,4,7,11]],
+    ['m9', [0,2,3,7,10]],
+    ['6/9', [0,2,4,7,9]],
+    ['mMaj7', [0,3,7,11]],
+    ['m7b5', [0,3,6,10]],
+    ['dim7', [0,3,6,9]],
+    ['5', [0,7]]
+  ];
+  function formulaKey(intervals){ return intervals.slice().sort((a,b)=>a-b).join(','); }
+  const FORMULA_MAP = new Map(CHORD_FORMULAS.map(([suffix,intervals])=>[formulaKey(intervals), suffix]));
+
+  function matchForRoot(pcSet, root){
+    const rootIdx = NOTE_INDEX[root];
+    const intervals = pcSet.map(pc => ((NOTE_INDEX[pc]-rootIdx)+12)%12);
+    const suffix = FORMULA_MAP.get(formulaKey(intervals));
+    return suffix===undefined ? null : suffix;
+  }
+
+  // pcSet: distinct pitch classes present; bassPc: pitch class of the lowest-sounding marked note
+  function detectChord(pcSet, bassPc){
+    if(pcSet.length === 0) return null;
+    if(pcSet.length === 1) return { root: pcSet[0], suffix:'', bassSlash:null, single:true };
+
+    if(bassPc){
+      const suffix = matchForRoot(pcSet, bassPc);
+      if(suffix !== null) return { root: bassPc, suffix, bassSlash:null };
+    }
+
+    for(const [suffix] of CHORD_FORMULAS){
+      for(const root of pcSet){
+        if(matchForRoot(pcSet, root) === suffix){
+          return { root, suffix, bassSlash: (bassPc && bassPc!==root) ? bassPc : null };
+        }
+      }
+    }
+    return null;
+  }
+
+  function formatChordLabel(match){
+    if(!match) return null;
+    if(match.single) return `${match.root} (${SOLFEGE[match.root]})`;
+    let label = match.root + match.suffix;
+    if(match.bassSlash) label += '/' + match.bassSlash;
+    return label;
+  }
+
+  // ---------- DOM refs / state ----------
+  const svg = document.getElementById('chordFretboard');
+  const chordNameEl = document.getElementById('chordName');
+  const chordNotesEl = document.getElementById('chordNotes');
+  const chordClearBtn = document.getElementById('chordClearBtn');
+
+  // marks[s] = fret number (0-12) if that string has a mark, else null (muted)
+  const marks = new Array(N).fill(null);
+
+  function onTapChordPosition(s, f){
+    marks[s] = (marks[s] === f) ? null : f;
+    render();
+  }
+
+  chordClearBtn.addEventListener('click', ()=>{
+    marks.fill(null);
+    render();
+  });
+
+  function updateChordDisplay(){
+    const markedStrings = [];
+    for(let s=0; s<N; s++){ if(marks[s]!==null) markedStrings.push(s); }
+
+    if(markedStrings.length === 0){
+      chordNameEl.textContent = '指板をタップしてください';
+      chordNotesEl.textContent = '';
+      return;
+    }
+
+    // bass = the marked position with the lowest actual pitch
+    let bassS = markedStrings[0];
+    markedStrings.forEach(s=>{ if(absPitch(s, marks[s]) < absPitch(bassS, marks[bassS])) bassS = s; });
+    const bassPc = pitchAt(bassS, marks[bassS]);
+
+    const pcSet = [];
+    markedStrings.forEach(s=>{
+      const pc = pitchAt(s, marks[s]);
+      if(pcSet.indexOf(pc)===-1) pcSet.push(pc);
+    });
+
+    const match = detectChord(pcSet, bassPc);
+    const label = formatChordLabel(match);
+    if(label){
+      chordNameEl.textContent = label;
+    } else {
+      chordNameEl.textContent = pcSet.join(', ');
+    }
+
+    // degrees are measured from the chord's root when one was found, otherwise from the bass note
+    const degreeRoot = match ? match.root : bassPc;
+    chordNotesEl.innerHTML = '';
+    markedStrings.forEach(s=>{
+      const pc = pitchAt(s, marks[s]);
+      const chip = document.createElement('span');
+      chip.className = 'note-chip';
+      chip.style.background = PITCH_COLORS[pc].fill;
+      chip.textContent = `${degreeOf(pc, degreeRoot)} ${SOLFEGE[pc]}(${pc})`;
+      chordNotesEl.appendChild(chip);
+    });
+  }
+
+  // ---------- rendering (fixed 6-string guitar fretboard, same visual style as the note tool) ----------
+  const NUT_X = 150, FRET_W = 62, TOP_MARGIN = 80, STRING_GAP = 34, RIGHT_PAD = 24;
+  const OPEN_X = NUT_X - 32, HEAD_TIP_X = 16, HEAD_FLARE = 26, PEG_POST_LEN = 20, PEG_R = 6;
+  const SCALE_LEN = 12*FRET_W*2;
+  const BODY_WIDEN = 1.2;
+
+  function fretWireX(fret){
+    return fret===0 ? NUT_X : NUT_X + SCALE_LEN*(1 - Math.pow(2, -fret/12));
+  }
+  function cellCenterX(fret){
+    return fret===0 ? OPEN_X : (fretWireX(fret-1)+fretWireX(fret))/2;
+  }
+  function svgEl(tag, attrs){
+    const el = document.createElementNS('http://www.w3.org/2000/svg', tag);
+    for(const k in attrs) el.setAttribute(k, attrs[k]);
+    return el;
+  }
+  function gradientStops(el, stops){
+    stops.forEach(([off,color])=>{
+      el.appendChild(svgEl('stop', { offset:`${off}%`, 'stop-color':color }));
+    });
+    return el;
+  }
+
+  function render(){
+    updateChordDisplay();
+
+    svg.innerHTML = '';
+    const n = N;
+    const neckTop = TOP_MARGIN - 16;
+    const neckBottom = TOP_MARGIN + (n-1)*STRING_GAP + 16;
+    const topHeadY = neckTop - HEAD_FLARE;
+    const bottomHeadY = neckBottom + HEAD_FLARE;
+    const CAP_R = 16;
+    const width = NUT_X + 12*FRET_W + RIGHT_PAD;
+    const RIGHT_EDGE = width - RIGHT_PAD;
+
+    const centerY = TOP_MARGIN + (n-1)*STRING_GAP/2;
+    const nutHalf = (n-1)*STRING_GAP/2;
+    const bodyHalf = nutHalf*BODY_WIDEN;
+    function halfWidthAt(x){
+      const t = Math.max(0, Math.min(1, (x-NUT_X)/(RIGHT_EDGE-NUT_X)));
+      return nutHalf + (bodyHalf-nutHalf)*t;
+    }
+    function topYAt(x){ return centerY - (halfWidthAt(x)+16); }
+    function bottomYAt(x){ return centerY + (halfWidthAt(x)+16); }
+    function stringYAt(row, x){
+      const norm = (row-(n-1)/2)/((n-1)/2);
+      return centerY + norm*halfWidthAt(x);
+    }
+
+    const height = Math.max(bottomHeadY, bottomYAt(RIGHT_EDGE)+40);
+    svg.setAttribute('viewBox', `0 0 ${width} ${height}`);
+
+    const defs = svgEl('defs', {});
+    defs.appendChild(gradientStops(svgEl('linearGradient', { id:'chordWoodGrad', x1:'0%', y1:'0%', x2:'100%', y2:'0%' }), [
+      [0,'#e7c785'], [22,'#d9b06a'], [48,'#ecce90'], [72,'#d3a862'], [100,'#e7c785']
+    ]));
+    defs.appendChild(gradientStops(svgEl('radialGradient', { id:'chordPegGrad', cx:'35%', cy:'32%', r:'70%' }), [
+      [0,'#f6f6f6'], [55,'#b9b9bd'], [100,'#57575b']
+    ]));
+    svg.appendChild(defs);
+
+    const headPath = `M ${NUT_X} ${neckTop} `
+      + `L ${HEAD_TIP_X+CAP_R} ${topHeadY} `
+      + `A ${CAP_R} ${CAP_R} 0 0 0 ${HEAD_TIP_X} ${topHeadY+CAP_R} `
+      + `L ${HEAD_TIP_X} ${bottomHeadY-CAP_R} `
+      + `A ${CAP_R} ${CAP_R} 0 0 0 ${HEAD_TIP_X+CAP_R} ${bottomHeadY} `
+      + `L ${NUT_X} ${neckBottom} Z`;
+    svg.appendChild(svgEl('path', { d:headPath, fill:'url(#chordWoodGrad)', stroke:'#7a5a30', 'stroke-width':1.5 }));
+
+    const neckPath = `M ${NUT_X} ${topYAt(NUT_X)} L ${RIGHT_EDGE} ${topYAt(RIGHT_EDGE)} `
+      + `L ${RIGHT_EDGE} ${bottomYAt(RIGHT_EDGE)} L ${NUT_X} ${bottomYAt(NUT_X)} Z`;
+    svg.appendChild(svgEl('path', { d:neckPath, fill:'url(#chordWoodGrad)', stroke:'#7a5a30', 'stroke-width':1.5 }));
+
+    for(let i=0;i<5;i++){
+      const frac = (i+0.5)/5;
+      const startY = topYAt(NUT_X) + frac*(bottomYAt(NUT_X)-topYAt(NUT_X));
+      const endY = topYAt(RIGHT_EDGE) + frac*(bottomYAt(RIGHT_EDGE)-topYAt(RIGHT_EDGE));
+      const midX = (NUT_X+RIGHT_EDGE)/2, midY = (startY+endY)/2 + (i%2?4:-4);
+      svg.appendChild(svgEl('path', {
+        d:`M ${NUT_X} ${startY} Q ${midX} ${midY} ${RIGHT_EDGE} ${endY}`,
+        stroke:'rgba(90,60,20,0.08)', 'stroke-width':1, fill:'none'
+      }));
+    }
+
+    const singleFrets = [3,5,7,9];
+    singleFrets.forEach(f=>{
+      svg.appendChild(svgEl('circle', { cx:cellCenterX(f), cy:centerY, r:7, fill:'#161616', stroke:'#000', 'stroke-width':0.5 }));
+    });
+    const x12 = cellCenterX(12);
+    const dot12Offset = STRING_GAP*1.35 * (halfWidthAt(x12)/nutHalf);
+    [centerY-dot12Offset, centerY+dot12Offset].forEach(y=>{
+      svg.appendChild(svgEl('circle', { cx:x12, cy:y, r:7, fill:'#161616', stroke:'#000', 'stroke-width':0.5 }));
+    });
+
+    for(let f=1; f<=12; f++){
+      const x = fretWireX(f);
+      svg.appendChild(svgEl('line', { x1:x, y1:topYAt(x)-2, x2:x, y2:bottomYAt(x)+2, stroke:'#cfcfd3', 'stroke-width':3 }));
+      svg.appendChild(svgEl('line', { x1:x, y1:topYAt(x)-2, x2:x, y2:bottomYAt(x)+2, stroke:'#ffffff', 'stroke-width':1, opacity:0.55 }));
+    }
+
+    svg.appendChild(svgEl('rect', {
+      x:NUT_X-4, y:neckTop-2, width:8, height:(neckBottom-neckTop)+4, rx:2,
+      fill:'#f2ede0', stroke:'#c3bb9f', 'stroke-width':1
+    }));
+
+    for(let row=0; row<n; row++){
+      const s = n-1-row;
+      const t = 0.12 + row*(0.76/(n-1));
+      const pegX = NUT_X + t*(HEAD_TIP_X-NUT_X);
+      const edgeY = neckTop + t*(topHeadY-neckTop);
+      const btnY = edgeY - PEG_POST_LEN;
+      const stringY = stringYAt(row, NUT_X);
+      const thickness = 1.4 + row*0.55;
+      svg.appendChild(svgEl('line', { x1:NUT_X, y1:stringY, x2:pegX, y2:edgeY, stroke:'#333', 'stroke-width':thickness }));
+      svg.appendChild(svgEl('line', { x1:NUT_X, y1:stringY, x2:pegX, y2:edgeY, stroke:'#eee', 'stroke-width':thickness*0.4, opacity:0.6 }));
+      svg.appendChild(svgEl('line', { x1:pegX, y1:edgeY, x2:pegX, y2:btnY, stroke:'#8a8a8e', 'stroke-width':3 }));
+      svg.appendChild(svgEl('circle', { cx:pegX, cy:btnY, r:PEG_R, fill:'url(#chordPegGrad)', stroke:'#3a3a3e', 'stroke-width':1 }));
+    }
+
+    for(let row=0; row<n; row++){
+      const y1 = stringYAt(row, NUT_X), y2 = stringYAt(row, RIGHT_EDGE);
+      const thickness = 1.4 + row*0.55;
+      svg.appendChild(svgEl('line', { x1:NUT_X, y1, x2:RIGHT_EDGE, y2, stroke:'#333', 'stroke-width':thickness, 'stroke-linecap':'round' }));
+      svg.appendChild(svgEl('line', { x1:NUT_X, y1, x2:RIGHT_EDGE, y2, stroke:'#eee', 'stroke-width':thickness*0.4, 'stroke-linecap':'round', opacity:0.6 }));
+    }
+
+    for(let f=0; f<=12; f++){
+      const x = cellCenterX(f);
+      const t = svgEl('text', { class:'fret-num', x, y:bottomYAt(x)+20 });
+      t.textContent = f;
+      svg.appendChild(t);
+    }
+
+    function yOf(s, x){ return stringYAt(n-1-s, x); }
+
+    // tap targets + marks
+    for(let s=0; s<n; s++){
+      for(let f=0; f<=12; f++){
+        const x = cellCenterX(f), y = yOf(s, x);
+        const isMarked = marks[s] === f;
+        const pc = pitchAt(s, f);
+        const color = PITCH_COLORS[pc];
+        const circle = svgEl('circle', {
+          cx:x, cy:y, r:13,
+          fill: isMarked ? color.fill : 'rgba(255,255,255,0.07)',
+          stroke: isMarked ? color.stroke : 'rgba(255,255,255,0.4)',
+          'stroke-width': isMarked ? 1.5 : 1.2,
+          style: 'cursor:pointer;'
+        });
+        circle.addEventListener('click', ()=> onTapChordPosition(s, f));
+        svg.appendChild(circle);
+        if(isMarked){
+          const label = svgEl('text', { x, y:y+4, 'text-anchor':'middle', 'font-size':10, 'font-weight':'bold', fill:'#1a1a1a' });
+          label.textContent = pc;
+          label.style.pointerEvents = 'none';
+          svg.appendChild(label);
+        }
+      }
+    }
+  }
+
+  render();
 })();
 </script>
 </body>
