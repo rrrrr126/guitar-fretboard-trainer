@@ -285,8 +285,11 @@
   }
   .capo-title{ font-size:1.05rem; text-align:center; margin:0 0 4px; }
   .capo-note{ font-size:0.75rem; color:var(--text-dim); text-align:center; margin:0 0 10px; }
+  .capo-keys{ display:grid; grid-template-columns:repeat(6,1fr); gap:6px; margin-bottom:12px; }
+  .capo-keys button{ padding:8px 0; font-weight:bold; background:var(--bg); border:1px solid var(--panel-border); color:var(--text-dim); }
+  .capo-keys button.active{ background:var(--accent); border-color:var(--accent); color:#08131f; }
   .capo-scroll{ overflow-x:auto; }
-  .capo-table{ border-collapse:collapse; width:100%; min-width:520px; font-size:0.9rem; text-align:center; }
+  .capo-table{ border-collapse:collapse; width:100%; font-size:0.9rem; text-align:center; }
   .capo-table th, .capo-table td{ padding:6px 4px; border-bottom:1px solid var(--panel-border); }
   .capo-table th{ color:var(--text-dim); font-weight:bold; position:sticky; top:0; background:var(--panel); }
   .capo-table td.capo-key{ font-weight:bold; font-size:1.05rem; border-right:1px solid var(--panel-border); }
@@ -464,7 +467,8 @@
   <div id="tabCapo" class="tab-panel">
     <section>
       <h2 class="capo-title">キー別カポ早見表</h2>
-      <p class="capo-note">行をタップすると強調表示されます。カポ位置のコードフォームを弾くと、左のキーで鳴ります。</p>
+      <p class="capo-note">キーを選ぶと、そのキーのカポ位置別コードが表示されます。カポ位置のコードフォームを弾くと、選んだキーで鳴ります。</p>
+      <div id="capoKeys" class="capo-keys"></div>
       <div class="capo-scroll"><table id="capoTable" class="capo-table"></table></div>
     </section>
   </div>
@@ -2240,29 +2244,34 @@
     return SHAPE_ST.map((st,i)=> SHARP[(r+st)%12] + SHAPE_Q[i]);
   }
   const capoTable = document.getElementById('capoTable');
-  let h = '<thead><tr><th>キー</th><th>カポ</th><th>Ⅰ</th><th>Ⅱm</th><th>Ⅲm</th><th>Ⅳ</th><th>Ⅴ</th><th>Ⅵm</th><th>Ⅶdim</th></tr></thead><tbody>';
-  Object.keys(OPEN).forEach((key, ki)=>{
-    const rows = [{pos:'カポなし', chords:OPEN[key]}];
+  const capoKeys = document.getElementById('capoKeys');
+  const KEYS = Object.keys(OPEN);
+  let curKey = 'C';
+  try{ const k = localStorage.getItem('capoKey'); if(k && OPEN[k]) curKey = k; }catch(e){}
+  function renderCapo(){
+    capoKeys.querySelectorAll('button').forEach(b=> b.classList.toggle('active', b.dataset.key===curKey));
+    const rows = [{pos:'カポなし', chords:OPEN[curKey]}];
     for(let c=1;c<=5;c++){
-      const shape = SHAPES.find(sh => (SEMI[sh]+c)%12 === SEMI[key]);
+      const shape = SHAPES.find(sh => (SEMI[sh]+c)%12 === SEMI[curKey]);
       if(shape) rows.push({pos:'capo'+c, chords:shapeRow(shape)});
     }
-    rows.forEach((row, ri)=>{
-      h += '<tr class="'+(ki%2===0?'capo-group-a':'')+(ri===0?' capo-group-start':'')+'" data-g="'+ki+'">';
-      if(ri===0) h += '<td class="capo-key" rowspan="'+rows.length+'">'+key+'</td>';
-      h += '<td class="capo-pos">'+row.pos+'</td>';
+    let h = '<thead><tr><th>カポ</th><th>Ⅰ</th><th>Ⅱm</th><th>Ⅲm</th><th>Ⅳ</th><th>Ⅴ</th><th>Ⅵm</th><th>Ⅶdim</th></tr></thead><tbody>';
+    rows.forEach(row=>{
+      h += '<tr><td class="capo-pos">'+row.pos+'</td>';
       row.chords.forEach(c=>{ h += '<td>'+c+'</td>'; });
       h += '</tr>';
     });
+    capoTable.innerHTML = h + '</tbody>';
+  }
+  capoKeys.innerHTML = KEYS.map(k=>'<button type="button" data-key="'+k+'">'+k+'</button>').join('');
+  capoKeys.addEventListener('click', e=>{
+    const b = e.target.closest('button[data-key]');
+    if(!b) return;
+    curKey = b.dataset.key;
+    try{ localStorage.setItem('capoKey', curKey); }catch(e){}
+    renderCapo();
   });
-  capoTable.innerHTML = h + '</tbody>';
-  capoTable.addEventListener('click', e=>{
-    const tr = e.target.closest('tbody tr');
-    if(!tr) return;
-    const was = tr.classList.contains('capo-hl');
-    capoTable.querySelectorAll('.capo-hl').forEach(x=>x.classList.remove('capo-hl'));
-    if(!was) tr.classList.add('capo-hl');
-  });
+  renderCapo();
 })();
 </script>
 </body>
