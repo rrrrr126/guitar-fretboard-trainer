@@ -923,6 +923,14 @@
     function bottomYAt(x){ return centerY + (halfWidthAt(x)+16); }
     function stringYAt(row, x){
       const norm = n>1 ? (row-(n-1)/2)/((n-1)/2) : 0;
+      if(x < NUT_X){
+        // ナットより左（開放弦位置）はヘッド内で斜めに上がる弦の線上に置く
+        const t = n>1 ? 0.12 + row*(0.76/(n-1)) : 0.5;
+        const pegX = NUT_X + t*(HEAD_TIP_X-NUT_X);
+        const edgeY = neckTop + t*(topHeadY-neckTop);
+        const y0 = centerY + norm*nutHalf;
+        return y0 + (NUT_X-x)/(NUT_X-pegX)*(edgeY-y0);
+      }
       return centerY + norm*halfWidthAt(x);
     }
 
@@ -2098,6 +2106,14 @@
     function bottomYAt(x){ return centerY + (halfWidthAt(x)+16); }
     function stringYAt(row, x){
       const norm = (row-(n-1)/2)/((n-1)/2);
+      if(x < NUT_X){
+        // ナットより左（開放弦位置）はヘッド内で斜めに上がる弦の線上に置く
+        const t = n>1 ? 0.12 + row*(0.76/(n-1)) : 0.5;
+        const pegX = NUT_X + t*(HEAD_TIP_X-NUT_X);
+        const edgeY = neckTop + t*(topHeadY-neckTop);
+        const y0 = centerY + norm*nutHalf;
+        return y0 + (NUT_X-x)/(NUT_X-pegX)*(edgeY-y0);
+      }
       return centerY + norm*halfWidthAt(x);
     }
 
