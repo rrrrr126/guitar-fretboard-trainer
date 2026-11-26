@@ -297,6 +297,18 @@
   .capo-table tr.capo-group-a td{ background:rgba(79,157,255,0.07); }
   .capo-table tr.capo-hl td{ background:rgba(79,157,255,0.28) !important; color:#fff; }
   .capo-table tr.capo-group-start td{ border-top:2px solid var(--panel-border); }
+  .mode-switch{ display:flex; gap:8px; padding:0; background:none; border:none; }
+  .mode-switch button{ flex:1; padding:10px 8px; font-weight:bold; }
+  body.mode-challenge .custom-only{ display:none; }
+  body:not(.mode-challenge) .challenge-only{ display:none; }
+  .challenge-status{ display:none; text-align:center; font-size:0.9rem; }
+  body.mode-challenge .challenge-status{ display:block; }
+  .challenge-status .lv{ font-size:1.1rem; font-weight:bold; color:var(--accent); }
+  .challenge-status .meter{ display:flex; justify-content:center; gap:4px; margin:6px 0; }
+  .challenge-status .meter i{ width:20px; height:8px; border-radius:4px; background:var(--panel-border); }
+  .challenge-status .meter i.on{ background:var(--good); }
+  .challenge-status .meter.miss i.on{ background:var(--bad); }
+  .challenge-status .hint{ color:var(--text-dim); font-size:0.78rem; }
 </style>
 </head>
 <body>
@@ -312,6 +324,10 @@
   </div>
 
   <div id="tabNotes" class="tab-panel active">
+  <section class="mode-switch">
+    <button id="modeCustomBtn" type="button">🛠 カスタム</button>
+    <button id="modeChallengeBtn" type="button">🏆 チャレンジ</button>
+  </section>
   <section class="controls">
     <div class="control-group">
       <label for="instrumentSelect">楽器</label>
@@ -340,11 +356,14 @@
     <div class="control-group">
       <button id="tuningEditBtn" type="button">チューニング編集</button>
     </div>
-    <div class="control-group">
+    <div class="control-group custom-only">
       <button id="stringFilterBtn" type="button">出題範囲設定</button>
     </div>
-    <div class="control-group">
+    <div class="control-group custom-only">
       <button id="reviewModeBtn" type="button">苦手問題を復習</button>
+    </div>
+    <div class="control-group challenge-only">
+      <button id="challengeResetBtn" type="button">レベルを1に戻す</button>
     </div>
     <div class="control-group">
       <button id="reverseModeBtn" type="button">🔄 逆引きモード</button>
@@ -361,6 +380,8 @@
     </div>
     <div id="stringFilterList" class="string-filter-list"></div>
   </section>
+
+  <section id="challengeStatus" class="challenge-status"></section>
 
   <section class="stats">
     <span>正解率: <b id="accuracyText">--</b></span>
@@ -572,7 +593,7 @@
   }
 
   const settings = Object.assign(
-    { instrumentId:'guitar6', naturalOnly:false, stringFilter:{}, showStaffBeforeAnswer:false, answerTimeLimit:0, fretRange:{min:0,max:12} },
+    { instrumentId:'guitar6', naturalOnly:false, stringFilter:{}, showStaffBeforeAnswer:false, answerTimeLimit:0, fretRange:{min:0,max:12}, mode:'custom', challengeLevels:{} },
     loadJSON(LS_SETTINGS, {})
   );
   if(!settings.stringFilter || typeof settings.stringFilter !== 'object'){ settings.stringFilter = {}; }
@@ -610,7 +631,72 @@
   }
   function weakKey(s, f){ return tuningKey() + '|' + s + '|' + f; }
 
-  function getStringFilter(){
+  // ---------- challenge mode (auto difficulty) ----------
+  // 6弦（最低音弦）だけから始め、連続正解で1本ずつ弦を追加。ミスが続くと1段階戻る。
+  const CH_UP_STREAK = 6;      // 連続正解がこの数に達したらレベルアップ
+  const CH_WINDOW = 6;         // 直近この問題数のうち…
+  const CH_DOWN_MISSES = 3;    // この回数以上ミスしたらレベルダウン
+  const CH_NEWEST_BOOST = 2;   // 新しく追加した弦を出題されやすくする倍率
+  if(!settings.challengeLevels || typeof settings.challengeLevels !== 'object') settings.challengeLevels = {};
+  const challenge = { streak:0, recent:[], pending:0 }; // pending: +1 / -1 (次の問題で反映)
+
+  function isChallenge(){ return settings.mode === 'challenge'; }
+  function challengeMax(){ return getCurrentTuning().length; }
+  function challengeLevel(){
+    const lv = settings.challengeLevels[settings.instrumentId] || 1;
+    return Math.max(1, Math.min(challengeMax(), lv));
+  }
+  function setChallengeLevel(lv){
+    settings.challengeLevels[settings.instrumentId] = Math.max(1, Math.min(challengeMax(), lv));
+    saveSettings();
+  }
+  function resetChallengeProgress(){ challenge.streak = 0; challenge.recent = []; challenge.pending = 0; }
+
+  // 正解/不正解を記録。レベル変更が起きる場合は次の問題で反映し、表示用メッセージを返す。
+  function challengeRecord(correct){
+    if(!isChallenge()) return '';
+    challenge.recent.push(!!correct);
+    if(challenge.recent.length > CH_WINDOW) challenge.recent.shift();
+    challenge.streak = correct ? challenge.streak + 1 : 0;
+    const misses = challenge.recent.filter(v=>!v).length;
+    const lv = challengeLevel();
+    let msg = '';
+    if(correct && challenge.streak >= CH_UP_STREAK && lv < challengeMax()){
+      challenge.pending = 1;
+      msg = `🎉 ${CH_UP_STREAK}問連続正解！ 次から${lv+1}本の弦に広がります。`;
+    } else if(!correct && misses >= CH_DOWN_MISSES && lv > 1){
+      challenge.pending = -1;
+      msg = `⬇ ミスが続いたので、次から${lv-1}本の弦に戻ります。`;
+    }
+    return msg;
+  }
+
+  function applyChallengePending(){
+    if(!challenge.pending) return;
+    setChallengeLevel(challengeLevel() + challenge.pending);
+    resetChallengeProgress();
+  }
+
+  function updateChallengeStatus(){
+    document.body.classList.toggle('mode-challenge', isChallenge());
+    const el = document.getElementById('challengeStatus');
+    if(!el) return;
+    if(!isChallenge()){ el.innerHTML = ''; return; }
+    const lv = challengeLevel(), max = challengeMax();
+    const strings = getCurrentTuning();
+    const names = [];
+    for(let i=0; i<lv; i++) names.push((strings.length-i)+'弦');
+    let dots = '';
+    const atMax = lv >= max;
+    const shown = atMax ? CH_UP_STREAK : Math.min(challenge.streak, CH_UP_STREAK);
+    for(let i=0; i<CH_UP_STREAK; i++) dots += `<i class="${i<shown?'on':''}"></i>`;
+    const misses = challenge.recent.filter(v=>!v).length;
+    el.innerHTML = `<div class="lv">Lv.${lv} / ${max}　${names.join('・')}</div>`
+      + `<div class="meter">${dots}</div>`
+      + `<div class="hint">${atMax ? '最高レベル！' : `連続正解 ${shown}/${CH_UP_STREAK} でレベルアップ`} ／ 直近${CH_WINDOW}問のミス ${misses}/${CH_DOWN_MISSES} でレベルダウン</div>`;
+  }
+
+  function getCustomStringFilter(){
     const strings = getCurrentTuning();
     let filter = settings.stringFilter[settings.instrumentId];
     if(!Array.isArray(filter) || filter.length !== strings.length){
@@ -620,7 +706,20 @@
     return filter;
   }
 
+  function getStringFilter(){
+    if(isChallenge()){
+      const lv = challengeLevel();
+      return getCurrentTuning().map((_,i)=> i < lv);
+    }
+    return getCustomStringFilter();
+  }
+
   function getFretRange(){
+    if(isChallenge()) return { min:0, max:12 };
+    return getCustomFretRange();
+  }
+
+  function getCustomFretRange(){
     let r = settings.fretRange;
     if(!r || typeof r.min!=='number' || typeof r.max!=='number' ||
        r.min<0 || r.max>12 || r.min>r.max){
@@ -705,7 +804,8 @@
     if(candidates.length===0) return null;
     const weighted = [];
     candidates.forEach(c=>{
-      const weight = 1 + Math.min(7, Math.round(weakScore(c.s, c.f)*0.6));
+      let weight = 1 + Math.min(7, Math.round(weakScore(c.s, c.f)*0.6));
+      if(isChallenge() && challengeLevel() > 1 && c.s === challengeLevel()-1) weight *= CH_NEWEST_BOOST;
       for(let i=0; i<weight; i++) weighted.push(c);
     });
     return weighted[Math.floor(Math.random()*weighted.length)];
@@ -809,9 +909,11 @@
   }
 
   function nextQuestion(){
+    applyChallengePending();
     state.idle = false;
     nextBtn.textContent = '次の問題 →';
     applyModeVisibility();
+    updateChallengeStatus();
 
     if(state.reverseMode){
       let q = state.reviewMode ? pickReverseWeakQuestion() : pickReverseQuestion();
@@ -1322,8 +1424,10 @@
     if(FLAT_ALIAS[correctPc]){
       msg += ` ※ ${FLAT_SOLFEGE[correctPc]} (${FLAT_ALIAS[correctPc]}) とも呼ばれます。`;
     }
+    { const cm = challengeRecord(false); if(cm) msg += ' ' + cm; }
     feedbackEl.textContent = msg;
     feedbackEl.className = 'feedback bad';
+    updateChallengeStatus();
 
     questionText.textContent = '同じ音名の位置をすべて表示しています';
     renderFretboard();
@@ -1362,8 +1466,10 @@
       msg += ` ※ ${FLAT_SOLFEGE[correctPc]} (${FLAT_ALIAS[correctPc]}) とも呼ばれます。`;
     }
     msg += ` (回答時間 ${(elapsedMs/1000).toFixed(1)}秒)`;
+    { const cm = challengeRecord(isLastAnswerCorrect); if(cm) msg += ' ' + cm; }
     feedbackEl.textContent = msg;
     feedbackEl.className = 'feedback ' + (isLastAnswerCorrect ? 'good' : 'bad');
+    updateChallengeStatus();
 
     questionText.textContent = '同じ音名の位置をすべて表示しています';
     renderFretboard();
@@ -1414,8 +1520,11 @@
     });
     saveWeak();
 
-    feedbackEl.textContent = `⭕ 正解！ ${SOLFEGE[reverseState.pc]} (${reverseState.pc}) を全て見つけました。 (回答時間 ${(elapsedMs/1000).toFixed(1)}秒)`;
+    let okMsg = `⭕ 正解！ ${SOLFEGE[reverseState.pc]} (${reverseState.pc}) を全て見つけました。 (回答時間 ${(elapsedMs/1000).toFixed(1)}秒)`;
+    { const cm = challengeRecord(true); if(cm) okMsg += ' ' + cm; }
+    feedbackEl.textContent = okMsg;
     feedbackEl.className = 'feedback good';
+    updateChallengeStatus();
 
     questionText.textContent = '正解ポジションを表示しています';
     giveUpBtn.style.display = 'none';
@@ -1462,6 +1571,8 @@
     else if(reason==='timeout') msg = `⏰ 時間切れ…`;
     else msg = `🏳️ ギブアップしました。`;
     msg += ` 正解は ${SOLFEGE[reverseState.pc]} (${reverseState.pc}) の${total}箇所でした。(${found}/${total} 発見)`;
+    { const cm = challengeRecord(false); if(cm) msg += ' ' + cm; }
+    updateChallengeStatus();
     feedbackEl.textContent = msg;
     feedbackEl.className = 'feedback bad';
 
@@ -1574,7 +1685,7 @@
     stringFilterList.innerHTML = '';
     const strings = getCurrentTuning();
     const n = strings.length;
-    const filter = getStringFilter();
+    const filter = getCustomStringFilter();
     for(let row=0; row<n; row++){
       const s = n-1-row;
       const stringNum = n-s;
@@ -1604,7 +1715,7 @@
 
   // ---------- fret range controls ----------
   function renderFretRangeControls(){
-    const range = getFretRange();
+    const range = getCustomFretRange();
     [fretMinSelect, fretMaxSelect].forEach(sel=>{
       sel.innerHTML = '';
       for(let f=0; f<=12; f++){
@@ -1619,7 +1730,7 @@
   }
 
   fretMinSelect.addEventListener('change', ()=>{
-    const range = getFretRange();
+    const range = getCustomFretRange();
     let min = parseInt(fretMinSelect.value, 10);
     if(min > range.max){ range.max = min; fretMaxSelect.value = min; }
     range.min = min;
@@ -1628,7 +1739,7 @@
   });
 
   fretMaxSelect.addEventListener('change', ()=>{
-    const range = getFretRange();
+    const range = getCustomFretRange();
     let max = parseInt(fretMaxSelect.value, 10);
     if(max < range.min){ range.min = max; fretMinSelect.value = max; }
     range.max = max;
@@ -1637,10 +1748,39 @@
   });
 
   // ---------- mode / UI wiring ----------
+  const modeCustomBtn = document.getElementById('modeCustomBtn');
+  const modeChallengeBtn = document.getElementById('modeChallengeBtn');
+  const challengeResetBtn = document.getElementById('challengeResetBtn');
+
+  function setMode(mode){
+    if(settings.mode === mode) return;
+    settings.mode = mode;
+    saveSettings();
+    state.reviewMode = false;
+    stringFilterPanel.classList.remove('open');
+    resetChallengeProgress();
+    updateModeUI();
+    renderStringFilterPanel();
+    renderFretRangeControls();
+    showIdleState();
+  }
+  modeCustomBtn.addEventListener('click', ()=> setMode('custom'));
+  modeChallengeBtn.addEventListener('click', ()=> setMode('challenge'));
+  challengeResetBtn.addEventListener('click', ()=>{
+    setChallengeLevel(1);
+    resetChallengeProgress();
+    updateModeUI();
+    showIdleState();
+  });
+
   function updateModeUI(){
+    modeCustomBtn.classList.toggle('active', !isChallenge());
+    modeChallengeBtn.classList.toggle('active', isChallenge());
+    updateChallengeStatus();
     reviewModeBtn.classList.toggle('active', state.reviewMode);
     reverseModeBtn.classList.toggle('active', state.reverseMode);
     const labels = [];
+    if(isChallenge()) labels.push('🏆 チャレンジ');
     if(state.reverseMode) labels.push('🔄 逆引きモード');
     if(state.reviewMode) labels.push('🔁 苦手問題復習モード');
     modeLabel.textContent = labels.join(' + ');
@@ -1649,6 +1789,8 @@
   instrumentSelect.addEventListener('change', ()=>{
     settings.instrumentId = instrumentSelect.value;
     saveSettings();
+    resetChallengeProgress();
+    updateChallengeStatus();
     renderTuningPanel();
     renderStringFilterPanel();
     showIdleState();
