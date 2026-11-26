@@ -283,6 +283,17 @@
     font-weight:bold;
     color:#1a1a1a;
   }
+  .capo-title{ font-size:1.05rem; text-align:center; margin:0 0 4px; }
+  .capo-note{ font-size:0.75rem; color:var(--text-dim); text-align:center; margin:0 0 10px; }
+  .capo-scroll{ overflow-x:auto; }
+  .capo-table{ border-collapse:collapse; width:100%; min-width:520px; font-size:0.9rem; text-align:center; }
+  .capo-table th, .capo-table td{ padding:6px 4px; border-bottom:1px solid var(--panel-border); }
+  .capo-table th{ color:var(--text-dim); font-weight:bold; position:sticky; top:0; background:var(--panel); }
+  .capo-table td.capo-key{ font-weight:bold; font-size:1.05rem; border-right:1px solid var(--panel-border); }
+  .capo-table td.capo-pos{ color:var(--text-dim); white-space:nowrap; }
+  .capo-table tr.capo-group-a td{ background:rgba(79,157,255,0.07); }
+  .capo-table tr.capo-hl td{ background:rgba(79,157,255,0.28) !important; color:#fff; }
+  .capo-table tr.capo-group-start td{ border-top:2px solid var(--panel-border); }
 </style>
 </head>
 <body>
@@ -294,6 +305,7 @@
     <button class="tab-btn active" id="tabBtnNotes" type="button" data-tab="notes">🎵 音名トレーニング</button>
     <button class="tab-btn" id="tabBtnMetronome" type="button" data-tab="metronome">🎼 メトロノーム</button>
     <button class="tab-btn" id="tabBtnChord" type="button" data-tab="chord">🎸 コード判定</button>
+    <button class="tab-btn" id="tabBtnCapo" type="button" data-tab="capo">📋 カポ早見表</button>
   </div>
 
   <div id="tabNotes" class="tab-panel active">
@@ -448,6 +460,14 @@
       <button id="chordClearBtn" type="button">クリア</button>
     </div>
   </div>
+
+  <div id="tabCapo" class="tab-panel">
+    <section>
+      <h2 class="capo-title">キー別カポ早見表</h2>
+      <p class="capo-note">行をタップすると強調表示されます。カポ位置のコードフォームを弾くと、左のキーで鳴ります。</p>
+      <div class="capo-scroll"><table id="capoTable" class="capo-table"></table></div>
+    </section>
+  </div>
 </div>
 
 <script>
@@ -457,7 +477,8 @@
   const tabPanels = {
     notes: document.getElementById('tabNotes'),
     metronome: document.getElementById('tabMetronome'),
-    chord: document.getElementById('tabChord')
+    chord: document.getElementById('tabChord'),
+    capo: document.getElementById('tabCapo')
   };
   tabBtns.forEach(btn=>{
     btn.addEventListener('click', ()=>{
@@ -2189,6 +2210,59 @@
   }
 
   render();
+})();
+</script>
+<script>
+(function(){
+  "use strict";
+  // キー → カポなし時のダイアトニックコード（I, IIm, IIIm, IV, V, VIm, VIIdim）
+  const OPEN = {
+    'F':['F','Gm','Am','B♭','C','Dm','Edim'],
+    'E':['E','F#m','G#m','A','B','C#m','D#dim'],
+    'E♭':['E♭','Fm','Gm','A♭','B♭','Cm','Ddim'],
+    'D':['D','Em','F#m','G','A','Bm','C#dim'],
+    'D♭':['D♭','E♭m','Fm','G♭','A♭','B♭m','Cdim'],
+    'C':['C','Dm','Em','F','G','Am','Bdim'],
+    'B':['B','C#m','D#m','E','F#','G#m','A#dim'],
+    'B♭':['B♭','Cm','Dm','E♭','F','Gm','Adim'],
+    'A':['A','Bm','C#m','D','E','F#m','G#dim'],
+    'A♭':['A♭','B♭m','Cm','D♭','E♭','Fm','Gdim'],
+    'G':['G','Am','Bm','C','D','Em','F#dim'],
+    'G♭':['G♭','A♭m','B♭m','B','D♭','E♭m','Fdim']
+  };
+  const SEMI = {'F':5,'E':4,'E♭':3,'D':2,'D♭':1,'C':0,'B':11,'B♭':10,'A':9,'A♭':8,'G':7,'G♭':6};
+  const SHAPES = ['C','A','G','E','D'];   // 押さえやすいオープンコードのキー
+  const SHARP = ['C','C#','D','D#','E','F','F#','G','G#','A','A#','B'];
+  const SHAPE_ST = [0,2,4,5,7,9,11];
+  const SHAPE_Q = ['','m','m','','','m','dim'];
+  function shapeRow(shape){
+    const r = SEMI[shape];
+    return SHAPE_ST.map((st,i)=> SHARP[(r+st)%12] + SHAPE_Q[i]);
+  }
+  const capoTable = document.getElementById('capoTable');
+  let h = '<thead><tr><th>キー</th><th>カポ</th><th>Ⅰ</th><th>Ⅱm</th><th>Ⅲm</th><th>Ⅳ</th><th>Ⅴ</th><th>Ⅵm</th><th>Ⅶdim</th></tr></thead><tbody>';
+  Object.keys(OPEN).forEach((key, ki)=>{
+    const rows = [{pos:'カポなし', chords:OPEN[key]}];
+    for(let c=1;c<=5;c++){
+      const shape = SHAPES.find(sh => (SEMI[sh]+c)%12 === SEMI[key]);
+      if(shape) rows.push({pos:'capo'+c, chords:shapeRow(shape)});
+    }
+    rows.forEach((row, ri)=>{
+      h += '<tr class="'+(ki%2===0?'capo-group-a':'')+(ri===0?' capo-group-start':'')+'" data-g="'+ki+'">';
+      if(ri===0) h += '<td class="capo-key" rowspan="'+rows.length+'">'+key+'</td>';
+      h += '<td class="capo-pos">'+row.pos+'</td>';
+      row.chords.forEach(c=>{ h += '<td>'+c+'</td>'; });
+      h += '</tr>';
+    });
+  });
+  capoTable.innerHTML = h + '</tbody>';
+  capoTable.addEventListener('click', e=>{
+    const tr = e.target.closest('tbody tr');
+    if(!tr) return;
+    const was = tr.classList.contains('capo-hl');
+    capoTable.querySelectorAll('.capo-hl').forEach(x=>x.classList.remove('capo-hl'));
+    if(!was) tr.classList.add('capo-hl');
+  });
 })();
 </script>
 </body>
