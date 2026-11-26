@@ -899,6 +899,8 @@
 
   const BODY_WIDEN = 1.2; // strings splay gently wider toward the body, like a real neck
 
+  window.matchMedia('(max-width: 600px)').addEventListener('change', ()=> renderFretboard());
+
   function renderFretboard(){
     svg.innerHTML = '';
     const strings = getCurrentTuning();
@@ -926,8 +928,16 @@
       return centerY + norm*halfWidthAt(x);
     }
 
+    const narrow = window.matchMedia('(max-width: 600px)').matches;
     const height = Math.max(bottomHeadY, bottomYAt(RIGHT_EDGE)+40);
-    svg.setAttribute('viewBox', `0 0 ${width} ${height}`);
+    if(narrow){
+      // スマホ幅ではヘッド・ペグを隠し、指板を画面いっぱいに表示
+      const vx = NUT_X - 18;
+      const vy = Math.min(neckTop, topYAt(RIGHT_EDGE)) - 12;
+      svg.setAttribute('viewBox', `${vx} ${vy} ${width-vx} ${bottomYAt(RIGHT_EDGE)+36-vy}`);
+    }else{
+      svg.setAttribute('viewBox', `0 0 ${width} ${height}`);
+    }
 
     // ---- gradient defs ----
     const defs = svgEl('defs', {});
@@ -946,7 +956,7 @@
       + `L ${HEAD_TIP_X} ${bottomHeadY-CAP_R} `
       + `A ${CAP_R} ${CAP_R} 0 0 0 ${HEAD_TIP_X+CAP_R} ${bottomHeadY} `
       + `L ${NUT_X} ${neckBottom} Z`;
-    svg.appendChild(svgEl('path', { d:headPath, fill:'url(#woodGrad)', stroke:'#7a5a30', 'stroke-width':1.5 }));
+    if(!narrow) svg.appendChild(svgEl('path', { d:headPath, fill:'url(#woodGrad)', stroke:'#7a5a30', 'stroke-width':1.5 }));
 
     // ---- neck (fretboard) - widens toward the body like a real neck ----
     const neckPath = `M ${NUT_X} ${topYAt(NUT_X)} L ${RIGHT_EDGE} ${topYAt(RIGHT_EDGE)} `
@@ -992,7 +1002,7 @@
     const filter = getStringFilter();
 
     // pegs + string segments running into the headstock
-    for(let row=0; row<n; row++){
+    for(let row=0; row<n && !narrow; row++){
       const s = n-1-row;
       const t = n>1 ? 0.12 + row*(0.76/(n-1)) : 0.5;
       const pegX = NUT_X + t*(HEAD_TIP_X-NUT_X);
@@ -2101,8 +2111,16 @@
       return centerY + norm*halfWidthAt(x);
     }
 
+    const narrow = window.matchMedia('(max-width: 600px)').matches;
     const height = Math.max(bottomHeadY, bottomYAt(RIGHT_EDGE)+40);
-    svg.setAttribute('viewBox', `0 0 ${width} ${height}`);
+    if(narrow){
+      // スマホ幅ではヘッド・ペグを隠し、指板を画面いっぱいに表示
+      const vx = NUT_X - 18;
+      const vy = Math.min(neckTop, topYAt(RIGHT_EDGE)) - 12;
+      svg.setAttribute('viewBox', `${vx} ${vy} ${width-vx} ${bottomYAt(RIGHT_EDGE)+36-vy}`);
+    }else{
+      svg.setAttribute('viewBox', `0 0 ${width} ${height}`);
+    }
 
     const defs = svgEl('defs', {});
     defs.appendChild(gradientStops(svgEl('linearGradient', { id:'chordWoodGrad', x1:'0%', y1:'0%', x2:'100%', y2:'0%' }), [
@@ -2119,7 +2137,7 @@
       + `L ${HEAD_TIP_X} ${bottomHeadY-CAP_R} `
       + `A ${CAP_R} ${CAP_R} 0 0 0 ${HEAD_TIP_X+CAP_R} ${bottomHeadY} `
       + `L ${NUT_X} ${neckBottom} Z`;
-    svg.appendChild(svgEl('path', { d:headPath, fill:'url(#chordWoodGrad)', stroke:'#7a5a30', 'stroke-width':1.5 }));
+    if(!narrow) svg.appendChild(svgEl('path', { d:headPath, fill:'url(#chordWoodGrad)', stroke:'#7a5a30', 'stroke-width':1.5 }));
 
     const neckPath = `M ${NUT_X} ${topYAt(NUT_X)} L ${RIGHT_EDGE} ${topYAt(RIGHT_EDGE)} `
       + `L ${RIGHT_EDGE} ${bottomYAt(RIGHT_EDGE)} L ${NUT_X} ${bottomYAt(NUT_X)} Z`;
@@ -2157,7 +2175,7 @@
       fill:'#f2ede0', stroke:'#c3bb9f', 'stroke-width':1
     }));
 
-    for(let row=0; row<n; row++){
+    for(let row=0; row<n && !narrow; row++){
       const s = n-1-row;
       const t = 0.12 + row*(0.76/(n-1));
       const pegX = NUT_X + t*(HEAD_TIP_X-NUT_X);
@@ -2214,6 +2232,7 @@
   }
 
   render();
+  window.matchMedia('(max-width: 600px)').addEventListener('change', render);
 })();
 </script>
 <script>
