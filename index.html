@@ -3,7 +3,16 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>指板音名トレーニング</title>
+<title>ギター指板トレーナー</title>
+<meta name="theme-color" content="#1b1b1f">
+<meta name="description" content="ギター指板の音名トレーニング、メトロノーム、コード判定、カポ早見表をまとめた練習ツール">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="指板トレーナー">
+<meta name="apple-mobile-web-app-status-bar-style" content="black">
 <style>
   :root{
     --bg: #1b1b1f;
@@ -313,7 +322,7 @@
 </head>
 <body>
 <div class="app">
-  <h1>ギター練習ツール</h1>
+  <h1>ギター指板トレーナー</h1>
   <p class="subtitle">指板の音名トレーニングとメトロノームで練習しよう</p>
 
   <div class="tab-bar">
@@ -2466,6 +2475,15 @@
   });
   renderCapo();
 })();
+</script>
+
+<script>
+// PWA: Service Worker 登録（http(s) 配信時のみ。失敗しても通常動作に影響しない）
+if('serviceWorker' in navigator && /^https?:$/.test(location.protocol)){
+  window.addEventListener('load', ()=>{
+    navigator.serviceWorker.register('sw.js').catch(()=>{});
+  });
+}
 </script>
 </body>
 </html>

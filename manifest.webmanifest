@@ -1,0 +1,16 @@
+{
+  "name": "ギター指板トレーナー",
+  "short_name": "指板トレーナー",
+  "description": "ギター指板の音名トレーニング、メトロノーム、コード判定、カポ早見表をまとめた練習ツール",
+  "lang": "ja",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#1b1b1f",
+  "theme_color": "#1b1b1f",
+  "icons": [
+    { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any maskable" },
+    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+  ]
+}
