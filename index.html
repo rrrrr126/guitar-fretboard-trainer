@@ -788,23 +788,42 @@
 
   // How "weak" a position is: 0 = never missed / no data, higher = missed more / answered slowly,
   // eased down a bit by correct answers so it fades out again with practice.
+  // 連続正解(streak)が続くほど苦手度が下がり、WEAK_CLEAR_STREAK 回連続で正解すると解消される。
+  const WEAK_CLEAR_STREAK = 4;
   function weakScore(s, f){
     const rec = weakData[weakKey(s, f)];
     if(!rec) return 0;
-    const wrong = rec.wrong||0, slow = rec.slow||0, correct = rec.correct||0;
+    const wrong = rec.wrong||0, slow = rec.slow||0;
     const missScore = wrong*3 + slow*1.5;
     if(missScore<=0) return 0;
-    return Math.max(0, missScore - Math.min(correct, wrong+slow)*0.5);
+    const streak = rec.streak||0;
+    return missScore * Math.max(0, 1 - streak/WEAK_CLEAR_STREAK);
   }
+
+  function isSeen(s, f){
+    const rec = weakData[weakKey(s, f)];
+    return !!rec && ((rec.correct||0) + (rec.wrong||0)) > 0;
+  }
+
+  // 出題の重み: 未出題は積極的に(4)、苦手は最大5、慣れた位置は1。
+  const UNSEEN_WEIGHT = 4;
+  function positionWeight(s, f){
+    if(!isSeen(s, f)) return UNSEEN_WEIGHT;
+    return 1 + Math.min(4, Math.round(weakScore(s, f)*0.5));
+  }
+
+  // 直前と同じ出題を連続させない
+  let lastPosKey = null, lastReversePc = null;
 
   // Normal mode still covers the whole board, but weak positions are weighted to come up
   // more often (capped so they don't crowd out everything else entirely).
   function pickNormalQuestion(){
-    const candidates = buildCandidates();
+    let candidates = buildCandidates();
     if(candidates.length===0) return null;
+    if(candidates.length>1){ candidates = candidates.filter(c=> (c.s+'-'+c.f) !== lastPosKey); }
     const weighted = [];
     candidates.forEach(c=>{
-      let weight = 1 + Math.min(7, Math.round(weakScore(c.s, c.f)*0.6));
+      let weight = positionWeight(c.s, c.f);
       if(isChallenge() && challengeLevel() > 1 && c.s === challengeLevel()-1) weight *= CH_NEWEST_BOOST;
       for(let i=0; i<weight; i++) weighted.push(c);
     });
@@ -812,7 +831,11 @@
   }
 
   function pickWeakQuestion(){
-    const candidates = buildCandidates();
+    let candidates = buildCandidates();
+    if(candidates.length>1){
+      const others = candidates.filter(c=> (c.s+'-'+c.f) !== lastPosKey);
+      if(others.some(c=> weakScore(c.s, c.f)>0)) candidates = others;
+    }
     const weighted = [];
     candidates.forEach(c=>{
       const score = weakScore(c.s, c.f);
@@ -852,12 +875,15 @@
 
   function pickReverseQuestion(){
     const byPc = groupTapPositionsByAskablePc();
-    const pcs = Object.keys(byPc);
+    let pcs = Object.keys(byPc);
     if(pcs.length===0) return null;
+    if(pcs.length>1) pcs = pcs.filter(pc=> pc !== lastReversePc);
     const weighted = [];
     pcs.forEach(pc=>{
-      const totalWeak = byPc[pc].reduce((sum,p)=> sum + weakScore(p.s,p.f), 0);
-      const weight = 1 + Math.min(7, Math.round(totalWeak*0.3));
+      const list = byPc[pc];
+      const totalWeak = list.reduce((sum,p)=> sum + weakScore(p.s,p.f), 0);
+      const unseenRatio = list.filter(p=> !isSeen(p.s,p.f)).length / list.length;
+      const weight = 1 + Math.min(4, Math.round(totalWeak*0.3)) + Math.round(unseenRatio*3);
       for(let i=0; i<weight; i++) weighted.push(pc);
     });
     const pc = weighted[Math.floor(Math.random()*weighted.length)];
@@ -868,6 +894,7 @@
     const byPc = groupTapPositionsByAskablePc();
     const weighted = [];
     Object.keys(byPc).forEach(pc=>{
+      if(pc === lastReversePc && Object.keys(byPc).length>1) return;
       const score = byPc[pc].reduce((sum,p)=> sum + weakScore(p.s,p.f), 0);
       if(score<=0) return;
       const weight = Math.max(1, Math.round(score));
@@ -893,6 +920,7 @@
 
   function setupReverseQuestion(q){
     reverseState.pc = q.pc;
+    lastReversePc = q.pc;
     reverseState.targets = q.targets;
     reverseState.found = new Set();
     reverseState.wrongPos = null;
@@ -940,6 +968,7 @@
       return;
     }
     state.current = q;
+    lastPosKey = q.s+'-'+q.f;
     state.answered = false;
     state.questionStartTime = Date.now();
     feedbackEl.classList.add('hidden');
@@ -1412,6 +1441,7 @@
     const key = weakKey(state.current.s, state.current.f);
     const rec = weakData[key] || { wrong:0, correct:0, timeSum:0, timeCount:0, slow:0 };
     rec.wrong++;
+    rec.streak = 0;
     rec.timeSum = (rec.timeSum||0) + elapsedMs;
     rec.timeCount = (rec.timeCount||0) + 1;
     rec.slow = (rec.slow||0) + 1;
@@ -1450,7 +1480,7 @@
 
     const key = weakKey(state.current.s, state.current.f);
     const rec = weakData[key] || { wrong:0, correct:0, timeSum:0, timeCount:0, slow:0 };
-    if(isLastAnswerCorrect) rec.correct++; else rec.wrong++;
+    if(isLastAnswerCorrect){ rec.correct++; rec.streak = (rec.streak||0) + 1; } else { rec.wrong++; rec.streak = 0; }
     rec.timeSum = (rec.timeSum||0) + elapsedMs;
     rec.timeCount = (rec.timeCount||0) + 1;
     if(elapsedMs > SLOW_MS) rec.slow = (rec.slow||0) + 1;
@@ -1514,6 +1544,7 @@
       const key = weakKey(t.s, t.f);
       const rec = weakData[key] || { wrong:0, correct:0, timeSum:0, timeCount:0, slow:0 };
       rec.correct++;
+      rec.streak = (rec.streak||0) + 1;
       rec.timeSum = (rec.timeSum||0) + elapsedMs;
       rec.timeCount = (rec.timeCount||0) + 1;
       weakData[key] = rec;
@@ -1547,7 +1578,7 @@
     reverseState.targets.forEach(t=>{
       const key = weakKey(t.s, t.f);
       const rec = weakData[key] || { wrong:0, correct:0, timeSum:0, timeCount:0, slow:0 };
-      if(reverseState.found.has(t.s+'-'+t.f)) rec.correct++; else rec.wrong++;
+      if(reverseState.found.has(t.s+'-'+t.f)){ rec.correct++; rec.streak = (rec.streak||0) + 1; } else { rec.wrong++; rec.streak = 0; }
       rec.timeSum = (rec.timeSum||0) + elapsedMs;
       rec.timeCount = (rec.timeCount||0) + 1;
       if(reason==='timeout') rec.slow = (rec.slow||0) + 1;
@@ -1558,6 +1589,7 @@
       const key = weakKey(wp.s, wp.f);
       const rec = weakData[key] || { wrong:0, correct:0, timeSum:0, timeCount:0, slow:0 };
       rec.wrong++;
+      rec.streak = 0;
       rec.timeSum = (rec.timeSum||0) + elapsedMs;
       rec.timeCount = (rec.timeCount||0) + 1;
       weakData[key] = rec;
