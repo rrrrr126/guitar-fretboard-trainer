@@ -1348,7 +1348,7 @@
 
   // ---------- rendering: fretboard ----------
   const NUT_X = 150, FRET_W = 62, TOP_MARGIN = 80, STRING_GAP = 34, RIGHT_PAD = 24;
-  const OPEN_X = NUT_X, HEAD_TIP_X = 16, HEAD_FLARE = 26, PEG_POST_LEN = 20, PEG_R = 6;
+  const OPEN_X = NUT_X - 20, HEAD_TIP_X = 16, HEAD_FLARE = 26, PEG_POST_LEN = 20, PEG_R = 6;
 
   // Real fret spacing follows the 12th-root-of-2 rule, so frets get narrower toward the body.
   const SCALE_LEN = 12*FRET_W*2;
@@ -1386,8 +1386,8 @@
     const g = svgEl('g', { id:'fret12FadeG-'+svgNode.id, 'pointer-events':'none' });
     const defs = svgEl('defs', {});
     const grad = svgEl('linearGradient', { id:'fret12Fade-'+svgNode.id, gradientUnits:'userSpaceOnUse', x1:x0, y1:0, x2:x0+70, y2:0 });
-    grad.appendChild(svgEl('stop', { offset:'0%', 'stop-color':'#26262c', 'stop-opacity':0.45 }));
-    grad.appendChild(svgEl('stop', { offset:'100%', 'stop-color':'#26262c', 'stop-opacity':0.9 }));
+    grad.appendChild(svgEl('stop', { offset:'0%', 'stop-color':'#26262c', 'stop-opacity':0.15 }));
+    grad.appendChild(svgEl('stop', { offset:'100%', 'stop-color':'#26262c', 'stop-opacity':0.4 }));
     defs.appendChild(grad);
     g.appendChild(defs);
     g.appendChild(svgEl('rect', { x:x0, y:-400, width:400, height:2400, fill:'url(#fret12Fade-'+svgNode.id+')' }));
@@ -1427,7 +1427,7 @@
     const viewRight = fretWireX(11) + 4;
     if(narrow){
       // スマホ幅ではヘッド・ペグを隠し、指板を画面いっぱいに表示（0フレット側に余裕を持たせる）
-      const vx = NUT_X - 40;
+      const vx = NUT_X - 44;
       const vy = Math.min(neckTop, topYAt(RIGHT_EDGE)) - 12;
       svg.setAttribute('viewBox', `${vx} ${vy} ${viewRight-vx} ${bottomYAt(RIGHT_EDGE)+36-vy}`);
     }else{
@@ -2600,7 +2600,7 @@
 
   // ---------- rendering (fixed 6-string guitar fretboard, same visual style as the note tool) ----------
   const NUT_X = 150, FRET_W = 62, TOP_MARGIN = 80, STRING_GAP = 34, RIGHT_PAD = 24;
-  const OPEN_X = NUT_X, HEAD_TIP_X = 16, HEAD_FLARE = 26, PEG_POST_LEN = 20, PEG_R = 6;
+  const OPEN_X = NUT_X - 20, HEAD_TIP_X = 16, HEAD_FLARE = 26, PEG_POST_LEN = 20, PEG_R = 6;
   const SCALE_LEN = 12*FRET_W*2;
   const BODY_WIDEN = 1.2;
 
@@ -2632,8 +2632,8 @@
     const g = svgEl('g', { id:'fret12FadeG-'+svgNode.id, 'pointer-events':'none' });
     const defs = svgEl('defs', {});
     const grad = svgEl('linearGradient', { id:'fret12Fade-'+svgNode.id, gradientUnits:'userSpaceOnUse', x1:x0, y1:0, x2:x0+70, y2:0 });
-    grad.appendChild(svgEl('stop', { offset:'0%', 'stop-color':'#26262c', 'stop-opacity':0.45 }));
-    grad.appendChild(svgEl('stop', { offset:'100%', 'stop-color':'#26262c', 'stop-opacity':0.9 }));
+    grad.appendChild(svgEl('stop', { offset:'0%', 'stop-color':'#26262c', 'stop-opacity':0.15 }));
+    grad.appendChild(svgEl('stop', { offset:'100%', 'stop-color':'#26262c', 'stop-opacity':0.4 }));
     defs.appendChild(grad);
     g.appendChild(defs);
     g.appendChild(svgEl('rect', { x:x0, y:-400, width:400, height:2400, fill:'url(#fret12Fade-'+svgNode.id+')' }));
@@ -2673,7 +2673,7 @@
     const viewRight = fretWireX(11) + 4;
     if(narrow){
       // スマホ幅ではヘッド・ペグを隠し、指板を画面いっぱいに表示（0フレット側に余裕を持たせる）
-      const vx = NUT_X - 40;
+      const vx = NUT_X - 44;
       const vy = Math.min(neckTop, topYAt(RIGHT_EDGE)) - 12;
       svg.setAttribute('viewBox', `${vx} ${vy} ${viewRight-vx} ${bottomYAt(RIGHT_EDGE)+36-vy}`);
     }else{
