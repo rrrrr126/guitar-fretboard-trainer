@@ -303,7 +303,7 @@
     overflow:hidden; /* 12フレット目が余白にはみ出すが、枠の外には出さない */
   }
   svg#fretboard, svg#chordFretboard{ width:100%; height:auto; display:block; overflow:visible; }
-  .fret-num{ fill: var(--text-dim); font-size:11px; text-anchor:middle; }
+  .fret-num{ fill: var(--text-dim); font-size:15px; text-anchor:middle; }
   .question-area{ text-align:center; }
   #questionText{ margin:0 0 10px; font-size:0.95rem; color:var(--text-dim); }
   .answer-timer{ max-width:280px; margin:0 auto 10px; }
@@ -1527,7 +1527,7 @@
     // fret number labels, following each fret's own board edge
     for(let f=0; f<=12; f++){
       const x = cellCenterX(f);
-      const t = svgEl('text', { class:'fret-num', x, y:bottomYAt(x)+20 });
+      const t = svgEl('text', { class:'fret-num', x, y:bottomYAt(x)+23 });
       t.textContent = f;
       svg.appendChild(t);
     }
@@ -2758,7 +2758,7 @@
 
     for(let f=0; f<=12; f++){
       const x = cellCenterX(f);
-      const t = svgEl('text', { class:'fret-num', x, y:bottomYAt(x)+20 });
+      const t = svgEl('text', { class:'fret-num', x, y:bottomYAt(x)+23 });
       t.textContent = f;
       svg.appendChild(t);
     }
