@@ -318,10 +318,29 @@
   .challenge-status .meter i.on{ background:var(--good); }
   .challenge-status .meter.miss i.on{ background:var(--bad); }
   .challenge-status .hint{ color:var(--text-dim); font-size:0.78rem; }
+  .app{ position:relative; }
+  .help-btn{ align-self:flex-end; padding:6px 10px; font-size:0.78rem; margin-bottom:-8px; }
+  dialog.manual{
+    width:min(680px, calc(100% - 24px)); max-height:calc(100% - 32px);
+    background:var(--panel); color:var(--text); border:1px solid var(--panel-border);
+    border-radius:12px; padding:0; overflow:hidden;
+  }
+  dialog.manual::backdrop{ background:rgba(0,0,0,0.6); }
+  .manual-inner{ display:flex; flex-direction:column; max-height:calc(100vh - 32px); }
+  .manual-head{ display:flex; justify-content:space-between; align-items:center; padding:12px 16px; border-bottom:1px solid var(--panel-border); }
+  .manual-head h2{ margin:0; font-size:1.05rem; }
+  .manual-body{ overflow-y:auto; padding:8px 16px 16px; font-size:0.88rem; line-height:1.65; }
+  .manual-body details{ border-bottom:1px solid var(--panel-border); padding:8px 0; }
+  .manual-body summary{ cursor:pointer; font-weight:bold; font-size:0.95rem; }
+  .manual-body ul{ margin:6px 0 4px; padding-left:1.3em; }
+  .manual-body li{ margin-bottom:3px; }
+  .manual-body p{ margin:6px 0; }
+  .manual-body .dim{ color:var(--text-dim); }
 </style>
 </head>
 <body>
 <div class="app">
+  <button id="manualBtn" class="help-btn" type="button" aria-label="マニュアルを開く">📖 マニュアル</button>
   <h1>ギター指板トレーナー</h1>
   <p class="subtitle">指板の音名トレーニングとメトロノームで練習しよう</p>
 
@@ -503,6 +522,94 @@
     </section>
   </div>
 </div>
+
+
+<dialog id="manualDialog" class="manual">
+  <div class="manual-inner">
+    <div class="manual-head">
+      <h2>📖 マニュアル</h2>
+      <button id="manualCloseBtn" type="button">閉じる</button>
+    </div>
+    <div class="manual-body">
+      <details open>
+        <summary>🎵 音名トレーニング</summary>
+        <ul>
+          <li><b>基本</b>：指板に出る青い印のポジションの音名を、選択肢から答えます。答えたあと、同じ音名の全ポジションが表示されます。</li>
+          <li><b>🔄 逆引きモード</b>：音名が出るので、指板上でその音のポジションを<b>すべて</b>タップします。違う位置をタップすると不正解です。わからないときは「ギブアップ」を押します。</li>
+          <li><b>カスタム／チャレンジ</b>：上のボタンで切り替えます（下の項目を参照）。</li>
+          <li><b>設定</b>：楽器（ギター6・7弦、ベース4・5弦）、ナチュラル音のみ、五線譜の表示、回答制限時間、チューニング編集ができます。</li>
+          <li>設定を変えると、いったん停止します。「スタート」を押すと再開します。</li>
+        </ul>
+      </details>
+      <details>
+        <summary>🛠 カスタムモード</summary>
+        <ul>
+          <li><b>出題範囲設定</b>：出題する弦とフレット（0〜12）を自由に選べます。</li>
+          <li><b>苦手問題を復習</b>：間違えた位置や、回答に4秒以上かかった位置だけを出題します。</li>
+          <li>通常の出題でも、苦手な位置と、まだ出ていない位置は出やすくなります。同じ位置は連続して出ません。</li>
+          <li>苦手な位置は、4回連続で正解すると解消されます。</li>
+        </ul>
+      </details>
+      <details>
+        <summary>🏆 チャレンジモード</summary>
+        <ul>
+          <li>難易度が自動で変わります。最初は6弦だけから始まります。</li>
+          <li><b>12問連続で正解</b>すると、弦が1本増えます（6弦→6・5弦→…）。</li>
+          <li><b>直近6問のうち3問ミス</b>すると、1段階戻ります。</li>
+          <li>新しく増えた弦は出題されやすくなります。通常と逆引きの両方で使えます。</li>
+          <li>レベルは楽器ごとに保存されます。「レベルを1に戻す」でやり直せます。</li>
+        </ul>
+      </details>
+      <details>
+        <summary>🎼 メトロノーム</summary>
+        <ul>
+          <li>BPMは20〜300。＋／−、スライダー、数字の入力で変えられます。</li>
+          <li><b>TAP</b>を一定のリズムで押すと、テンポを測れます（パソコンはSpaceキーでも可）。</li>
+          <li>拍子（2〜7拍子）と、分割（4分・8分・3連符・16分）を選べます。</li>
+          <li>「▶ 再生」で開始します。音が出るので、端末の音量とマナーモードを確認してください。</li>
+        </ul>
+      </details>
+      <details>
+        <summary>🎸 コード判定</summary>
+        <ul>
+          <li>指板をタップして印を付けると、コード名を自動で判定します。</li>
+          <li>印は1本の弦に1つまで。同じ位置をもう一度タップすると外れます。</li>
+          <li>各音の度数をローマ数字で表示し、音程ごとに色分けします。ベース音が違うときは分数コード（スラッシュコード）になります。</li>
+          <li>標準チューニング（6弦ギター）固定です。「クリア」で全部外せます。</li>
+        </ul>
+      </details>
+      <details>
+        <summary>📋 カポ早見表</summary>
+        <ul>
+          <li>キーを選ぶと、そのキーのダイアトニックコード（Ⅰ〜Ⅶ）を、カポなし・カポ1〜5の位置別に表示します。</li>
+          <li>カポ位置の行のコードを弾くと、選んだキーで鳴ります。</li>
+        </ul>
+      </details>
+      <details>
+        <summary>📱 アプリとして使う・データについて</summary>
+        <ul>
+          <li>スマホのブラウザで「ホーム画面に追加」すると、アプリのように起動できます。オフラインでも使えます。</li>
+          <li>正解率、苦手ポジション、設定、チャレンジのレベルは、この端末のブラウザ内に保存されます。端末やブラウザが違うと、記録は共有されません。</li>
+          <li>「学習データをリセット」で、正解率と苦手の記録を削除できます。</li>
+          <li>アプリの更新は、次に開いたときに裏で取得され、その次の起動から反映されます。</li>
+        </ul>
+      </details>
+    </div>
+  </div>
+</dialog>
+
+<script>
+(function(){
+  "use strict";
+  const manualDialog = document.getElementById('manualDialog');
+  document.getElementById('manualBtn').addEventListener('click', ()=>{
+    if(typeof manualDialog.showModal === 'function') manualDialog.showModal(); else manualDialog.setAttribute('open','');
+  });
+  document.getElementById('manualCloseBtn').addEventListener('click', ()=> manualDialog.close());
+  // 枠の外（背景）をタップしても閉じる
+  manualDialog.addEventListener('click', e=>{ if(e.target === manualDialog) manualDialog.close(); });
+})();
+</script>
 
 <script>
 (function(){
