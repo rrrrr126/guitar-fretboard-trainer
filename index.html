@@ -7,6 +7,148 @@
 <meta name="theme-color" content="#1b1b1f">
 <meta name="description" content="ギター指板の音名トレーニング、メトロノーム、コード判定、カポ早見表をまとめた練習ツール">
 <link rel="manifest" href="manifest.webmanifest">
+<script>
+// ---- 多言語対応 (i18n) ----
+// キーは日本語の原文。英語の訳がなければ原文をそのまま表示する。言語切替は保存して再読み込み。
+(function(){
+  "use strict";
+  var KEY = 'fbt_lang';
+  var lang = 'ja';
+  try{
+    var saved = localStorage.getItem(KEY);
+    if(saved === 'ja' || saved === 'en') lang = saved;
+    else lang = /^ja/i.test(navigator.language || '') ? 'ja' : 'en';
+  }catch(e){
+    lang = /^ja/i.test(navigator.language || '') ? 'ja' : 'en';
+  }
+  document.documentElement.lang = lang;
+
+  var EN = {
+    'ギター指板トレーナー':'Guitar Fretboard Trainer',
+    'ギター指板の音名トレーニング、メトロノーム、コード判定、カポ早見表をまとめた練習ツール':'Guitar practice tools: fretboard note-name training, metronome, chord finder and capo chart',
+    '指板トレーナー':'Fretboard Trainer',
+    'マニュアルを開く':'Open manual',
+    '📖 マニュアル':'📖 Manual',
+    '指板の音名トレーニングとメトロノームで練習しよう':'Practice fretboard note names and keep time with the metronome',
+    '🎵 音名トレーニング':'🎵 Note Training',
+    '🎼 メトロノーム':'🎼 Metronome',
+    '🎸 コード判定':'🎸 Chord Finder',
+    '📋 カポ早見表':'📋 Capo Chart',
+    '🛠 カスタム':'🛠 Custom',
+    '🏆 チャレンジ':'🏆 Challenge',
+    '楽器':'Instrument',
+    'ギター (6弦)':'Guitar (6-string)','ギター (7弦)':'Guitar (7-string)','ベース (4弦)':'Bass (4-string)','ベース (5弦)':'Bass (5-string)',
+    'ナチュラル音のみ':'Natural notes only',
+    '五線譜を回答前から表示':'Show staff before answering',
+    '回答制限時間':'Answer time limit',
+    'オフ':'Off','3秒':'3 s','5秒':'5 s','10秒':'10 s',
+    'チューニング編集':'Edit tuning',
+    '出題範囲設定':'Question range',
+    '苦手問題を復習':'Review weak spots',
+    'レベルを1に戻す':'Reset to level 1',
+    '🔄 逆引きモード':'🔄 Reverse mode',
+    'フレット範囲':'Fret range',
+    '〜':'–',
+    '正解率:':'Accuracy:',
+    '問題数:':'Questions:',
+    '青い印の位置の音名を答えてください':'Name the note at the blue marker',
+    '見つけた:':'Found:',
+    'わからない（ギブアップ）':'I don\'t know (give up)',
+    '次の問題 →':'Next →',
+    '苦手ポジション TOP5':'Top 5 weak positions',
+    '学習データをリセット':'Reset learning data',
+    '拍子（1小節の拍数）':'Time signature (beats per bar)',
+    '2拍子':'2 beats','3拍子':'3 beats','4拍子':'4 beats','5拍子':'5 beats','6拍子':'6 beats','7拍子':'7 beats',
+    '分割（1拍あたりのクリック数）':'Subdivision (clicks per beat)',
+    '♩ 4分':'♩ Quarter','♫ 8分':'♫ 8th','3連符':'Triplet','16分':'16th',
+    '▶ 再生':'▶ Play','■ 停止':'■ Stop',
+    '指板をタップしてください':'Tap the fretboard',
+    'クリア':'Clear',
+    'キー別カポ早見表':'Capo chart by key',
+    'キーを選ぶと、そのキーのカポ位置別コードが表示されます。カポ位置のコードフォームを弾くと、選んだキーで鳴ります。':'Choose a key to see its chords for each capo position. Play the chord shapes shown for a capo position and they sound in the chosen key.',
+    'カポ':'Capo','カポなし':'No capo',
+    '閉じる':'Close',
+    '言語':'Language',
+    // --- dynamic ---
+    '{n}弦':'String {n}',
+    '{list}弦':'Strings {list}',
+    '設定を変更しました。準備ができたらスタートしてください。':'Settings changed. Press Start when you are ready.',
+    'スタート →':'Start →',
+    '指板上で、この音のポジションをすべてタップしてください':'Tap every position of this note on the fretboard',
+    'このチューニング・出題範囲ではまだ苦手データがありません。まずは通常モードで問題を解いてみましょう。':'No weak-spot data yet for this tuning and range. Try the normal mode first.',
+    '⏰ 時間切れ… 正解は {note} でした。':'⏰ Time is up… The answer was {note}.',
+    ' ※ {alias} とも呼ばれます。':' Also called {alias}.',
+    '同じ音名の位置をすべて表示しています':'Showing every position of the same note',
+    '⭕ 正解！ {note} です。':'⭕ Correct! It is {note}.',
+    '❌ 不正解… 正解は {note} でした。':'❌ Wrong… The answer was {note}.',
+    ' (回答時間 {sec}秒)':' ({sec} s)',
+    '⭕ 正解！ {note} を全て見つけました。':'⭕ Correct! You found every {note}.',
+    '正解ポジションを表示しています':'Showing the correct positions',
+    '❌ 不正解… 違う位置をタップしました。':'❌ Wrong… You tapped a wrong position.',
+    '⏰ 時間切れ…':'⏰ Time is up…',
+    '🏳️ ギブアップしました。':'🏳️ You gave up.',
+    ' 正解は {note} の{total}箇所でした。({found}/{total} 発見)':' The answer: {total} positions of {note}. ({found}/{total} found)',
+    'まだ苦手データはありません。問題を解いてみましょう。':'No weak spots yet. Try some questions.',
+    '{n}弦 {f}F: {note} — 間違い{w}回':'String {n}, fret {f}: {note} — missed {w}×',
+    ' / 回答遅め{n}回':' / slow {n}×',
+    ' (平均{s}秒)':' (avg {s} s)',
+    'デフォルトに戻す':'Reset to default',
+    '少なくとも1本は出題対象の弦を選択してください。':'Select at least one string.',
+    '🏆 チャレンジ':'🏆 Challenge',
+    '🔁 苦手問題復習モード':'🔁 Weak-spot review',
+    '正解率・苦手ポジションの記録をすべて削除します。よろしいですか？':'This deletes your accuracy and weak-position records. Continue?',
+    '🎉 {n}問連続正解！ 次から{lv}本の弦に広がります。':'🎉 {n} correct in a row! Next, {lv} strings are in play.',
+    '⬇ ミスが続いたので、次から{lv}本の弦に戻ります。':'⬇ Too many misses. Back to {lv} string(s) from the next question.',
+    '最高レベル！':'Top level!',
+    '連続正解 {shown}/{up} でレベルアップ':'Streak {shown}/{up} to level up',
+    ' ／ 直近{w}問のミス {m}/{d} でレベルダウン':' / Misses in last {w}: {m}/{d} to level down'
+  };
+
+  function fill(str, params){
+    if(!params) return str;
+    return str.replace(/\{(\w+)\}/g, function(m, k){ return params[k] !== undefined ? params[k] : m; });
+  }
+  function t(ja, params){
+    var out = (lang === 'en' && EN[ja] !== undefined) ? EN[ja] : ja;
+    return fill(out, params);
+  }
+  window.I18N = {
+    lang: lang,
+    t: t,
+    set: function(l){ try{ localStorage.setItem(KEY, l); }catch(e){} location.reload(); },
+    // 静的な HTML を翻訳する（テキストノードと一部の属性）
+    apply: function(){
+      if(lang !== 'en') return;
+      var skip = { SCRIPT:1, STYLE:1 };
+      var walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT, {
+        acceptNode: function(n){
+          var el = n.parentNode;
+          if(!el || skip[el.nodeName]) return NodeFilter.FILTER_REJECT;
+          if(el.closest && el.closest('.manual-lang')) return NodeFilter.FILTER_REJECT;
+          return n.nodeValue.trim() ? NodeFilter.FILTER_ACCEPT : NodeFilter.FILTER_REJECT;
+        }
+      });
+      var nodes = [], n;
+      while((n = walker.nextNode())) nodes.push(n);
+      nodes.forEach(function(node){
+        var raw = node.nodeValue, trimmed = raw.trim();
+        if(EN[trimmed] !== undefined){
+          node.nodeValue = raw.replace(trimmed, EN[trimmed]);
+        }
+      });
+      document.querySelectorAll('[aria-label]').forEach(function(el){
+        var v = el.getAttribute('aria-label');
+        if(EN[v] !== undefined) el.setAttribute('aria-label', EN[v]);
+      });
+      document.title = t('ギター指板トレーナー');
+      var md = document.querySelector('meta[name="description"]');
+      if(md) md.setAttribute('content', t(md.getAttribute('content')));
+      var at = document.querySelector('meta[name="apple-mobile-web-app-title"]');
+      if(at) at.setAttribute('content', t('指板トレーナー'));
+    }
+  };
+})();
+</script>
 <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
 <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -336,6 +478,10 @@
   .manual-body li{ margin-bottom:3px; }
   .manual-body p{ margin:6px 0; }
   .manual-body .dim{ color:var(--text-dim); }
+  .manual-lang{ display:block; }
+  html[lang="ja"] .manual-lang[lang="en"], html[lang="en"] .manual-lang[lang="ja"]{ display:none; }
+  html[lang="en"] .solfege{ display:none; }
+  .lang-select{ margin-left:auto; margin-right:8px; font-size:0.8rem; }
 </style>
 </head>
 <body>
@@ -528,9 +674,14 @@
   <div class="manual-inner">
     <div class="manual-head">
       <h2>📖 マニュアル</h2>
+      <select id="langSelect" class="lang-select" aria-label="Language">
+        <option value="ja">日本語</option>
+        <option value="en">English</option>
+      </select>
       <button id="manualCloseBtn" type="button">閉じる</button>
     </div>
     <div class="manual-body">
+      <div class="manual-lang" lang="ja">
       <details open>
         <summary>🎵 音名トレーニング</summary>
         <ul>
@@ -593,6 +744,71 @@
           <li>音名トレーニング画面の下にある「学習データをリセット」で、正解率と苦手の記録を削除できます。</li>
         </ul>
       </details>
+      </div>
+      <div class="manual-lang" lang="en">
+      <details open>
+        <summary>🎵 Note Training</summary>
+        <ul>
+          <li><b>Basics</b>: Name the note at the blue marker on the fretboard by choosing from the answers. After you answer, every position of that note is highlighted.</li>
+          <li><b>🔄 Reverse mode</b>: A note name is shown. Tap <b>all</b> of its positions on the fretboard. Tapping a wrong position counts as a miss. Press “give up” if you are stuck.</li>
+          <li><b>Custom / Challenge</b>: Switch with the buttons at the top (see below).</li>
+          <li><b>Settings</b>: Instrument (guitar 6/7 strings, bass 4/5 strings), natural notes only, showing the staff, answer time limit and tuning editor.</li>
+          <li>Changing a setting pauses the quiz. Press “Start” to resume.</li>
+        </ul>
+      </details>
+      <details>
+        <summary>🛠 Custom mode</summary>
+        <ul>
+          <li><b>Question range</b>: Choose which strings and frets (0–12) are asked.</li>
+          <li><b>Review weak spots</b>: Only asks positions you missed or took 4 seconds or more to answer.</li>
+          <li>Even in normal play, weak positions and positions you have not seen yet come up more often. The same position never appears twice in a row.</li>
+          <li>A weak position is cleared after 4 correct answers in a row.</li>
+        </ul>
+      </details>
+      <details>
+        <summary>🏆 Challenge mode</summary>
+        <ul>
+          <li>The difficulty adjusts automatically. You start with the 6th string only.</li>
+          <li><b>12 correct in a row</b> adds one more string (6th → 6th and 5th → …).</li>
+          <li><b>3 misses in the last 6 questions</b> takes you back one level.</li>
+          <li>Newly added strings come up more often. Works with both normal and reverse mode.</li>
+          <li>Your level is saved per instrument. Use “Reset to level 1” to start over.</li>
+        </ul>
+      </details>
+      <details>
+        <summary>🎼 Metronome</summary>
+        <ul>
+          <li>Tempo from 20 to 300 BPM. Change it with ＋/−, the slider or by typing a number.</li>
+          <li>Press <b>TAP</b> in a steady rhythm to measure a tempo.</li>
+          <li>Choose 2–7 beats per bar and a subdivision (quarter, 8th, triplet, 16th).</li>
+          <li>Press “▶ Play” to start. It makes sound, so check your volume and silent mode.</li>
+        </ul>
+      </details>
+      <details>
+        <summary>🎸 Chord Finder</summary>
+        <ul>
+          <li>Tap the fretboard to place marks and the chord name is detected automatically.</li>
+          <li>One mark per string. Tap the same position again to remove it.</li>
+          <li>Each note shows its degree as a Roman numeral and is colour-coded by pitch. If the bass note differs, a slash chord is shown.</li>
+          <li>Standard tuning (6-string guitar) only. “Clear” removes all marks.</li>
+        </ul>
+      </details>
+      <details>
+        <summary>📋 Capo Chart</summary>
+        <ul>
+          <li>Pick a key to see its diatonic chords (Ⅰ–Ⅶ) with no capo and with the capo on frets 1–5.</li>
+          <li>Play the chords shown for a capo position and they sound in the chosen key.</li>
+        </ul>
+      </details>
+      <details>
+        <summary>💾 About your data</summary>
+        <ul>
+          <li>Accuracy, weak positions, settings and your Challenge level are saved automatically on this device.</li>
+          <li>Records are not shared between devices. Uninstalling the app deletes them.</li>
+          <li>Use “Reset learning data” at the bottom of the Note Training screen to delete accuracy and weak-position records.</li>
+        </ul>
+      </details>
+      </div>
     </div>
   </div>
 </dialog>
@@ -605,8 +821,12 @@
     if(typeof manualDialog.showModal === 'function') manualDialog.showModal(); else manualDialog.setAttribute('open','');
   });
   document.getElementById('manualCloseBtn').addEventListener('click', ()=> manualDialog.close());
+  const langSelect = document.getElementById('langSelect');
+  langSelect.value = I18N.lang;
+  langSelect.addEventListener('change', ()=> I18N.set(langSelect.value));
   // 枠の外（背景）をタップしても閉じる
   manualDialog.addEventListener('click', e=>{ if(e.target === manualDialog) manualDialog.close(); });
+  I18N.apply();
 })();
 </script>
 
@@ -644,6 +864,12 @@
   };
   const FLAT_ALIAS = { 'C#':'D♭', 'D#':'E♭', 'F#':'G♭', 'G#':'A♭', 'A#':'B♭' };
   const FLAT_SOLFEGE = { 'C#':'レ♭', 'D#':'ミ♭', 'F#':'ソ♭', 'G#':'ラ♭', 'A#':'シ♭' };
+  const t = I18N.t;
+  const IS_JA = I18N.lang === 'ja';
+  // 日本語: 「ド (C)」 / 英語: 「C」
+  function noteLabel(pc){ return IS_JA ? `${SOLFEGE[pc]} (${pc})` : pc; }
+  function flatLabel(pc){ return IS_JA ? `${FLAT_SOLFEGE[pc]} (${FLAT_ALIAS[pc]})` : FLAT_ALIAS[pc]; }
+  function stringLabel(n){ return t('{n}弦', {n}); }
 
   const DEFAULT_TUNINGS = {
     guitar6: ['E','A','D','G','B','E'],
@@ -652,7 +878,7 @@
     bass5:   ['B','E','A','D','G']
   };
   const INSTRUMENT_NAMES = {
-    guitar6: 'ギター (6弦)', guitar7: 'ギター (7弦)', bass4: 'ベース (4弦)', bass5: 'ベース (5弦)'
+    guitar6: I18N.t('ギター (6弦)'), guitar7: I18N.t('ギター (7弦)'), bass4: I18N.t('ベース (4弦)'), bass5: I18N.t('ベース (5弦)')
   };
   // open-string octave (scientific pitch notation) for each default tuning, low string to high string
   const DEFAULT_OCTAVES = {
@@ -778,10 +1004,10 @@
     let msg = '';
     if(correct && challenge.streak >= CH_UP_STREAK && lv < challengeMax()){
       challenge.pending = 1;
-      msg = `🎉 ${CH_UP_STREAK}問連続正解！ 次から${lv+1}本の弦に広がります。`;
+      msg = t('🎉 {n}問連続正解！ 次から{lv}本の弦に広がります。', { n:CH_UP_STREAK, lv:lv+1 });
     } else if(!correct && misses >= CH_DOWN_MISSES && lv > 1){
       challenge.pending = -1;
-      msg = `⬇ ミスが続いたので、次から${lv-1}本の弦に戻ります。`;
+      msg = t('⬇ ミスが続いたので、次から{lv}本の弦に戻ります。', { lv:lv-1 });
     }
     return msg;
   }
@@ -800,15 +1026,18 @@
     const lv = challengeLevel(), max = challengeMax();
     const strings = getCurrentTuning();
     const names = [];
-    for(let i=0; i<lv; i++) names.push((strings.length-i)+'弦');
+    for(let i=0; i<lv; i++) names.push(strings.length-i);
     let dots = '';
     const atMax = lv >= max;
     const shown = atMax ? CH_UP_STREAK : Math.min(challenge.streak, CH_UP_STREAK);
     for(let i=0; i<CH_UP_STREAK; i++) dots += `<i class="${i<shown?'on':''}"></i>`;
     const misses = challenge.recent.filter(v=>!v).length;
-    el.innerHTML = `<div class="lv">Lv.${lv} / ${max}　${names.join('・')}</div>`
+    const namesText = IS_JA ? names.map(n=> n+'弦').join('・') : (names.length===1 ? t('{n}弦', {n:names[0]}) : t('{list}弦', {list:names.join(', ')}));
+    const hintText = (atMax ? t('最高レベル！') : t('連続正解 {shown}/{up} でレベルアップ', { shown, up:CH_UP_STREAK }))
+      + t(' ／ 直近{w}問のミス {m}/{d} でレベルダウン', { w:CH_WINDOW, m:misses, d:CH_DOWN_MISSES });
+    el.innerHTML = `<div class="lv">Lv.${lv} / ${max}　${namesText}</div>`
       + `<div class="meter">${dots}</div>`
-      + `<div class="hint">${atMax ? '最高レベル！' : `連続正解 ${shown}/${CH_UP_STREAK} でレベルアップ`} ／ 直近${CH_WINDOW}問のミス ${misses}/${CH_DOWN_MISSES} でレベルダウン</div>`;
+      + `<div class="hint">${hintText}</div>`;
   }
 
   function getCustomStringFilter(){
@@ -1027,7 +1256,7 @@
   }
 
   function updateReversePromptUI(){
-    reverseSolfege.textContent = SOLFEGE[reverseState.pc];
+    reverseSolfege.textContent = IS_JA ? SOLFEGE[reverseState.pc] : '';
     reverseLetter.textContent = reverseState.pc;
     reverseFoundCount.textContent = reverseState.found.size;
     reverseTotalCount.textContent = reverseState.targets.length;
@@ -1045,7 +1274,7 @@
     feedbackEl.classList.add('hidden');
     nextBtn.classList.add('hidden');
     giveUpBtn.style.display = '';
-    questionText.textContent = '指板上で、この音のポジションをすべてタップしてください';
+    questionText.textContent = t('指板上で、この音のポジションをすべてタップしてください');
     updateReversePromptUI();
     renderFretboard();
     startAnswerTimer();
@@ -1054,14 +1283,14 @@
   function nextQuestion(){
     applyChallengePending();
     state.idle = false;
-    nextBtn.textContent = '次の問題 →';
+    nextBtn.textContent = t('次の問題 →');
     applyModeVisibility();
     updateChallengeStatus();
 
     if(state.reverseMode){
       let q = state.reviewMode ? pickReverseWeakQuestion() : pickReverseQuestion();
       if(!q && state.reviewMode){
-        alert('このチューニング・出題範囲ではまだ苦手データがありません。まずは通常モードで問題を解いてみましょう。');
+        alert(t('このチューニング・出題範囲ではまだ苦手データがありません。まずは通常モードで問題を解いてみましょう。'));
         state.reviewMode = false;
         updateModeUI();
         q = pickReverseQuestion();
@@ -1073,7 +1302,7 @@
 
     let q = state.reviewMode ? pickWeakQuestion() : pickNormalQuestion();
     if(!q && state.reviewMode){
-      alert('このチューニング・出題範囲ではまだ苦手データがありません。まずは通常モードで問題を解いてみましょう。');
+      alert(t('このチューニング・出題範囲ではまだ苦手データがありません。まずは通常モードで問題を解いてみましょう。'));
       state.reviewMode = false;
       updateModeUI();
       q = pickNormalQuestion();
@@ -1088,7 +1317,7 @@
     state.questionStartTime = Date.now();
     feedbackEl.classList.add('hidden');
     nextBtn.classList.add('hidden');
-    questionText.textContent = '青い印の位置の音名を答えてください';
+    questionText.textContent = t('青い印の位置の音名を答えてください');
     renderFretboard();
     renderChoices();
     startAnswerTimer();
@@ -1111,8 +1340,8 @@
     answerRow.style.display = 'none';
     choicesEl.innerHTML = '';
     feedbackEl.classList.add('hidden');
-    questionText.textContent = '設定を変更しました。準備ができたらスタートしてください。';
-    nextBtn.textContent = 'スタート →';
+    questionText.textContent = t('設定を変更しました。準備ができたらスタートしてください。');
+    nextBtn.textContent = t('スタート →');
     nextBtn.classList.remove('hidden');
     renderFretboard();
   }
@@ -1497,7 +1726,7 @@
     choices.forEach(pc=>{
       const btn = document.createElement('button');
       btn.className = 'choice-btn';
-      btn.innerHTML = `<span class="solfege">${SOLFEGE[pc]}</span><span class="letter">${pc}</span>`;
+      btn.innerHTML = `<span class="solfege">${IS_JA ? SOLFEGE[pc] : ''}</span><span class="letter">${pc}</span>`;
       btn.addEventListener('click', ()=> onAnswer(pc, btn));
       choicesEl.appendChild(btn);
     });
@@ -1565,16 +1794,16 @@
 
     styleAnswerButtons(correctPc, null);
 
-    let msg = `⏰ 時間切れ… 正解は ${SOLFEGE[correctPc]} (${correctPc}) でした。`;
+    let msg = t('⏰ 時間切れ… 正解は {note} でした。', { note:noteLabel(correctPc) });
     if(FLAT_ALIAS[correctPc]){
-      msg += ` ※ ${FLAT_SOLFEGE[correctPc]} (${FLAT_ALIAS[correctPc]}) とも呼ばれます。`;
+      msg += t(' ※ {alias} とも呼ばれます。', { alias:flatLabel(correctPc) });
     }
     { const cm = challengeRecord(false); if(cm) msg += ' ' + cm; }
     feedbackEl.textContent = msg;
     feedbackEl.className = 'feedback bad';
     updateChallengeStatus();
 
-    questionText.textContent = '同じ音名の位置をすべて表示しています';
+    questionText.textContent = t('同じ音名の位置をすべて表示しています');
     renderFretboard();
     updateStatsDisplay();
     renderWeakList();
@@ -1605,18 +1834,18 @@
     styleAnswerButtons(correctPc, btnEl);
 
     let msg = isLastAnswerCorrect
-      ? `⭕ 正解！ ${SOLFEGE[correctPc]} (${correctPc}) です。`
-      : `❌ 不正解… 正解は ${SOLFEGE[correctPc]} (${correctPc}) でした。`;
+      ? t('⭕ 正解！ {note} です。', { note:noteLabel(correctPc) })
+      : t('❌ 不正解… 正解は {note} でした。', { note:noteLabel(correctPc) });
     if(FLAT_ALIAS[correctPc]){
-      msg += ` ※ ${FLAT_SOLFEGE[correctPc]} (${FLAT_ALIAS[correctPc]}) とも呼ばれます。`;
+      msg += t(' ※ {alias} とも呼ばれます。', { alias:flatLabel(correctPc) });
     }
-    msg += ` (回答時間 ${(elapsedMs/1000).toFixed(1)}秒)`;
+    msg += t(' (回答時間 {sec}秒)', { sec:(elapsedMs/1000).toFixed(1) });
     { const cm = challengeRecord(isLastAnswerCorrect); if(cm) msg += ' ' + cm; }
     feedbackEl.textContent = msg;
     feedbackEl.className = 'feedback ' + (isLastAnswerCorrect ? 'good' : 'bad');
     updateChallengeStatus();
 
-    questionText.textContent = '同じ音名の位置をすべて表示しています';
+    questionText.textContent = t('同じ音名の位置をすべて表示しています');
     renderFretboard();
     updateStatsDisplay();
     renderWeakList();
@@ -1666,13 +1895,13 @@
     });
     saveWeak();
 
-    let okMsg = `⭕ 正解！ ${SOLFEGE[reverseState.pc]} (${reverseState.pc}) を全て見つけました。 (回答時間 ${(elapsedMs/1000).toFixed(1)}秒)`;
+    let okMsg = t('⭕ 正解！ {note} を全て見つけました。', { note:noteLabel(reverseState.pc) }) + t(' (回答時間 {sec}秒)', { sec:(elapsedMs/1000).toFixed(1) });
     { const cm = challengeRecord(true); if(cm) okMsg += ' ' + cm; }
     feedbackEl.textContent = okMsg;
     feedbackEl.className = 'feedback good';
     updateChallengeStatus();
 
-    questionText.textContent = '正解ポジションを表示しています';
+    questionText.textContent = t('正解ポジションを表示しています');
     giveUpBtn.style.display = 'none';
     renderFretboard();
     updateStatsDisplay();
@@ -1714,16 +1943,16 @@
     const total = reverseState.targets.length;
     const found = reverseState.found.size;
     let msg;
-    if(reason==='wrong-tap') msg = `❌ 不正解… 違う位置をタップしました。`;
-    else if(reason==='timeout') msg = `⏰ 時間切れ…`;
-    else msg = `🏳️ ギブアップしました。`;
-    msg += ` 正解は ${SOLFEGE[reverseState.pc]} (${reverseState.pc}) の${total}箇所でした。(${found}/${total} 発見)`;
+    if(reason==='wrong-tap') msg = t('❌ 不正解… 違う位置をタップしました。');
+    else if(reason==='timeout') msg = t('⏰ 時間切れ…');
+    else msg = t('🏳️ ギブアップしました。');
+    msg += t(' 正解は {note} の{total}箇所でした。({found}/{total} 発見)', { note:noteLabel(reverseState.pc), total, found });
     { const cm = challengeRecord(false); if(cm) msg += ' ' + cm; }
     updateChallengeStatus();
     feedbackEl.textContent = msg;
     feedbackEl.className = 'feedback bad';
 
-    questionText.textContent = '正解ポジションを表示しています';
+    questionText.textContent = t('正解ポジションを表示しています');
     giveUpBtn.style.display = 'none';
     renderFretboard();
     updateStatsDisplay();
@@ -1766,16 +1995,16 @@
     if(entries.length===0){
       const li = document.createElement('li');
       li.className = 'empty';
-      li.textContent = 'まだ苦手データはありません。問題を解いてみましょう。';
+      li.textContent = t('まだ苦手データはありません。問題を解いてみましょう。');
       weakListEl.appendChild(li);
       return;
     }
     entries.forEach(e=>{
       const stringNum = n - e.s;
       const li = document.createElement('li');
-      let text = `${stringNum}弦 ${e.f}F: ${SOLFEGE[e.pc]} (${e.pc}) — 間違い${e.wrong}回`;
-      if(e.slow>0) text += ` / 回答遅め${e.slow}回`;
-      if(e.avgSec!==null) text += ` (平均${e.avgSec.toFixed(1)}秒)`;
+      let text = t('{n}弦 {f}F: {note} — 間違い{w}回', { n:stringNum, f:e.f, note:noteLabel(e.pc), w:e.wrong });
+      if(e.slow>0) text += t(' / 回答遅め{n}回', { n:e.slow });
+      if(e.avgSec!==null) text += t(' (平均{s}秒)', { s:e.avgSec.toFixed(1) });
       li.textContent = text;
       weakListEl.appendChild(li);
     });
@@ -1792,12 +2021,12 @@
       const wrap = document.createElement('div');
       wrap.className = 'tuning-row';
       const label = document.createElement('label');
-      label.textContent = `${stringNum}弦`;
+      label.textContent = stringLabel(stringNum);
       const select = document.createElement('select');
       CHROMATIC.forEach(pc=>{
         const opt = document.createElement('option');
         opt.value = pc;
-        opt.textContent = `${pc} (${SOLFEGE[pc]})`;
+        opt.textContent = IS_JA ? `${pc} (${SOLFEGE[pc]})` : pc;
         if(pc === strings[s]) opt.selected = true;
         select.appendChild(opt);
       });
@@ -1815,7 +2044,7 @@
     actions.className = 'tuning-actions';
     const resetBtn = document.createElement('button');
     resetBtn.type = 'button';
-    resetBtn.textContent = 'デフォルトに戻す';
+    resetBtn.textContent = t('デフォルトに戻す');
     resetBtn.addEventListener('click', ()=>{
       tunings[settings.instrumentId] = DEFAULT_TUNINGS[settings.instrumentId].slice();
       saveTunings();
@@ -1846,7 +2075,7 @@
           const anyLeft = filter.some((v,i)=> i!==s && v);
           if(!anyLeft){
             cb.checked = true;
-            alert('少なくとも1本は出題対象の弦を選択してください。');
+            alert(t('少なくとも1本は出題対象の弦を選択してください。'));
             return;
           }
         }
@@ -1855,7 +2084,7 @@
         showIdleState();
       });
       label.appendChild(cb);
-      label.appendChild(document.createTextNode(` ${stringNum}弦 (${strings[s]})`));
+      label.appendChild(document.createTextNode(` ${stringLabel(stringNum)} (${strings[s]})`));
       stringFilterList.appendChild(label);
     }
   }
@@ -1927,9 +2156,9 @@
     reviewModeBtn.classList.toggle('active', state.reviewMode);
     reverseModeBtn.classList.toggle('active', state.reverseMode);
     const labels = [];
-    if(isChallenge()) labels.push('🏆 チャレンジ');
-    if(state.reverseMode) labels.push('🔄 逆引きモード');
-    if(state.reviewMode) labels.push('🔁 苦手問題復習モード');
+    if(isChallenge()) labels.push(t('🏆 チャレンジ'));
+    if(state.reverseMode) labels.push(t('🔄 逆引きモード'));
+    if(state.reviewMode) labels.push(t('🔁 苦手問題復習モード'));
     modeLabel.textContent = labels.join(' + ');
   }
 
@@ -1991,7 +2220,7 @@
   nextBtn.addEventListener('click', nextQuestion);
 
   resetDataBtn.addEventListener('click', ()=>{
-    if(!confirm('正解率・苦手ポジションの記録をすべて削除します。よろしいですか？')) return;
+    if(!confirm(t('正解率・苦手ポジションの記録をすべて削除します。よろしいですか？'))) return;
     weakData = {};
     stats = { attempts:0, correct:0 };
     saveWeak();
@@ -2178,14 +2407,14 @@
     currentClick = 0;
     nextNoteTime = audioCtx.currentTime + 0.05;
     scheduler();
-    metroPlayBtn.textContent = '■ 停止';
+    metroPlayBtn.textContent = I18N.t('■ 停止');
     metroPlayBtn.classList.add('playing');
   }
 
   function stopMetronome(){
     isPlaying = false;
     clearTimeout(schedulerId);
-    metroPlayBtn.textContent = '▶ 再生';
+    metroPlayBtn.textContent = I18N.t('▶ 再生');
     metroPlayBtn.classList.remove('playing');
     Array.from(beatDots.children).forEach(d=> d.classList.remove('on'));
   }
@@ -2282,7 +2511,7 @@
 
   function formatChordLabel(match){
     if(!match) return null;
-    if(match.single) return `${match.root} (${SOLFEGE[match.root]})`;
+    if(match.single) return I18N.lang==='ja' ? `${match.root} (${SOLFEGE[match.root]})` : match.root;
     let label = match.root + match.suffix;
     if(match.bassSlash) label += '/' + match.bassSlash;
     return label;
@@ -2312,7 +2541,7 @@
     for(let s=0; s<N; s++){ if(marks[s]!==null) markedStrings.push(s); }
 
     if(markedStrings.length === 0){
-      chordNameEl.textContent = '指板をタップしてください';
+      chordNameEl.textContent = I18N.t('指板をタップしてください');
       chordNotesEl.textContent = '';
       return;
     }
@@ -2344,7 +2573,7 @@
       const chip = document.createElement('span');
       chip.className = 'note-chip';
       chip.style.background = PITCH_COLORS[pc].fill;
-      chip.textContent = `${degreeOf(pc, degreeRoot)} ${SOLFEGE[pc]}(${pc})`;
+      chip.textContent = I18N.lang==='ja' ? `${degreeOf(pc, degreeRoot)} ${SOLFEGE[pc]}(${pc})` : `${degreeOf(pc, degreeRoot)} ${pc}`;
       chordNotesEl.appendChild(chip);
     });
   }
@@ -2558,12 +2787,12 @@
   try{ const k = localStorage.getItem('capoKey'); if(k && OPEN[k]) curKey = k; }catch(e){}
   function renderCapo(){
     capoKeys.querySelectorAll('button').forEach(b=> b.classList.toggle('active', b.dataset.key===curKey));
-    const rows = [{pos:'カポなし', chords:OPEN[curKey]}];
+    const rows = [{pos:I18N.t('カポなし'), chords:OPEN[curKey]}];
     for(let c=1;c<=5;c++){
       const shape = SHAPES.find(sh => (SEMI[sh]+c)%12 === SEMI[curKey]);
       if(shape) rows.push({pos:'capo'+c, chords:shapeRow(shape)});
     }
-    let h = '<thead><tr><th>カポ</th><th>Ⅰ</th><th>Ⅱm</th><th>Ⅲm</th><th>Ⅳ</th><th>Ⅴ</th><th>Ⅵm</th><th>Ⅶdim</th></tr></thead><tbody>';
+    let h = '<thead><tr><th>'+I18N.t('カポ')+'</th><th>Ⅰ</th><th>Ⅱm</th><th>Ⅲm</th><th>Ⅳ</th><th>Ⅴ</th><th>Ⅵm</th><th>Ⅶdim</th></tr></thead><tbody>';
     rows.forEach(row=>{
       h += '<tr><td class="capo-pos">'+row.pos+'</td>';
       row.chords.forEach(c=>{ h += '<td>'+c+'</td>'; });
