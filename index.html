@@ -1564,8 +1564,8 @@
             const isFound = reverseState.found.has(key);
             const circle = svgEl('circle', {
               cx:x, cy:y, r:13,
-              fill: isFound ? 'rgba(62,207,107,0.85)' : 'rgba(255,255,255,0.2)',
-              stroke: isFound ? '#1c6b34' : 'rgba(255,255,255,0.85)',
+              fill: isFound ? 'rgba(62,207,107,0.85)' : 'rgba(255,255,255,0.1)',
+              stroke: isFound ? '#1c6b34' : 'rgba(255,255,255,0.5)',
               'stroke-width': isFound ? 1.5 : 1.2,
               style: 'cursor:pointer;'
             });
@@ -2774,8 +2774,8 @@
         const color = PITCH_COLORS[pc];
         const circle = svgEl('circle', {
           cx:x, cy:y, r:13,
-          fill: isMarked ? color.fill : 'rgba(255,255,255,0.2)',
-          stroke: isMarked ? color.stroke : 'rgba(255,255,255,0.85)',
+          fill: isMarked ? color.fill : 'rgba(255,255,255,0.1)',
+          stroke: isMarked ? color.stroke : 'rgba(255,255,255,0.5)',
           'stroke-width': isMarked ? 1.5 : 1.2,
           style: 'cursor:pointer;'
         });
