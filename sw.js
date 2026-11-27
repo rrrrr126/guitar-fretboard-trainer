@@ -1,6 +1,6 @@
 // オフライン対応用 Service Worker。
 // 更新を配信したいときは CACHE のバージョン番号を上げる。
-const CACHE = 'guitar-trainer-v1';
+const CACHE = 'guitar-trainer-v2';
 const ASSETS = [
   './',
   './index.html',
