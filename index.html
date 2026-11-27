@@ -695,7 +695,7 @@
       <details>
         <summary>🛠 カスタムモード</summary>
         <ul>
-          <li><b>出題範囲設定</b>：出題する弦とフレット（0〜12）を自由に選べます。</li>
+          <li><b>出題範囲設定</b>：出題する弦とフレット（0〜11）を自由に選べます。12フレットは0フレット（開放弦）と同じ音なので、出題しません。</li>
           <li><b>苦手問題を復習</b>：間違えた位置や、回答に4秒以上かかった位置だけを出題します。</li>
           <li>通常の出題でも、苦手な位置と、まだ出ていない位置は出やすくなります。同じ位置は連続して出ません。</li>
           <li>苦手な位置は、4回連続で正解すると解消されます。</li>
@@ -759,7 +759,7 @@
       <details>
         <summary>🛠 Custom mode</summary>
         <ul>
-          <li><b>Question range</b>: Choose which strings and frets (0–12) are asked.</li>
+          <li><b>Question range</b>: Choose which strings and frets (0–11) are asked. The 12th fret has the same notes as the open strings, so it is not asked.</li>
           <li><b>Review weak spots</b>: Only asks positions you missed or took 4 seconds or more to answer.</li>
           <li>Even in normal play, weak positions and positions you have not seen yet come up more often. The same position never appears twice in a row.</li>
           <li>A weak position is cleared after 4 correct answers in a row.</li>
@@ -934,7 +934,7 @@
   }
 
   const settings = Object.assign(
-    { instrumentId:'guitar6', naturalOnly:false, stringFilter:{}, showStaffBeforeAnswer:false, answerTimeLimit:0, fretRange:{min:0,max:12}, mode:'custom', challengeLevels:{} },
+    { instrumentId:'guitar6', naturalOnly:false, stringFilter:{}, showStaffBeforeAnswer:false, answerTimeLimit:0, fretRange:{min:0,max:11}, mode:'custom', challengeLevels:{} },
     loadJSON(LS_SETTINGS, {})
   );
   if(!settings.stringFilter || typeof settings.stringFilter !== 'object'){ settings.stringFilter = {}; }
@@ -1059,17 +1059,19 @@
   }
 
   function getFretRange(){
-    if(isChallenge()) return { min:0, max:12 };
+    if(isChallenge()) return { min:0, max:11 };
     return getCustomFretRange();
   }
 
   function getCustomFretRange(){
     let r = settings.fretRange;
     if(!r || typeof r.min!=='number' || typeof r.max!=='number' ||
-       r.min<0 || r.max>12 || r.min>r.max){
-      r = { min:0, max:12 };
+       r.min<0 || r.max<0 || r.min>r.max){
+      r = { min:0, max:11 };
       settings.fretRange = r;
     }
+    // 12フレットは0フレット（開放弦）と同じ音なので出題しない（以前の保存値も補正）
+    if(r.max > 11){ r.max = 11; if(r.min > r.max) r.min = 0; }
     return r;
   }
 
@@ -1348,7 +1350,7 @@
 
   // ---------- rendering: fretboard ----------
   const NUT_X = 150, FRET_W = 62, TOP_MARGIN = 80, STRING_GAP = 34, RIGHT_PAD = 24;
-  const OPEN_X = NUT_X - 20, HEAD_TIP_X = 16, HEAD_FLARE = 26, PEG_POST_LEN = 20, PEG_R = 6;
+  const OPEN_X = NUT_X - 26, HEAD_TIP_X = 16, HEAD_FLARE = 26, PEG_POST_LEN = 20, PEG_R = 6;
 
   // Real fret spacing follows the 12th-root-of-2 rule, so frets get narrower toward the body.
   const SCALE_LEN = 12*FRET_W*2;
@@ -1427,7 +1429,7 @@
     const viewRight = fretWireX(11) + 4;
     if(narrow){
       // スマホ幅ではヘッド・ペグを隠し、指板を画面いっぱいに表示（0フレット側に余裕を持たせる）
-      const vx = NUT_X - 44;
+      const vx = NUT_X - 50;
       const vy = Math.min(neckTop, topYAt(RIGHT_EDGE)) - 12;
       svg.setAttribute('viewBox', `${vx} ${vy} ${viewRight-vx} ${bottomYAt(RIGHT_EDGE)+36-vy}`);
     }else{
@@ -1577,7 +1579,7 @@
       if(state.answered && state.current){
         const targetPc = state.current.pc;
         for(let s=0; s<n; s++){
-          for(let f=0; f<=12; f++){
+          for(let f=0; f<=11; f++){
             if(pitchAt(strings[s], f) !== targetPc) continue;
             const x = cellCenterX(f), y = yOf(s, x);
             svg.appendChild(svgEl('circle', { cx:x, cy:y, r:12, fill:'rgba(62,207,107,0.85)', stroke:'#1c6b34', 'stroke-width':1.5 }));
@@ -2114,7 +2116,7 @@
     const range = getCustomFretRange();
     [fretMinSelect, fretMaxSelect].forEach(sel=>{
       sel.innerHTML = '';
-      for(let f=0; f<=12; f++){
+      for(let f=0; f<=11; f++){
         const opt = document.createElement('option');
         opt.value = f;
         opt.textContent = f;
@@ -2600,7 +2602,7 @@
 
   // ---------- rendering (fixed 6-string guitar fretboard, same visual style as the note tool) ----------
   const NUT_X = 150, FRET_W = 62, TOP_MARGIN = 80, STRING_GAP = 34, RIGHT_PAD = 24;
-  const OPEN_X = NUT_X - 20, HEAD_TIP_X = 16, HEAD_FLARE = 26, PEG_POST_LEN = 20, PEG_R = 6;
+  const OPEN_X = NUT_X - 26, HEAD_TIP_X = 16, HEAD_FLARE = 26, PEG_POST_LEN = 20, PEG_R = 6;
   const SCALE_LEN = 12*FRET_W*2;
   const BODY_WIDEN = 1.2;
 
@@ -2673,7 +2675,7 @@
     const viewRight = fretWireX(11) + 4;
     if(narrow){
       // スマホ幅ではヘッド・ペグを隠し、指板を画面いっぱいに表示（0フレット側に余裕を持たせる）
-      const vx = NUT_X - 44;
+      const vx = NUT_X - 50;
       const vy = Math.min(neckTop, topYAt(RIGHT_EDGE)) - 12;
       svg.setAttribute('viewBox', `${vx} ${vy} ${viewRight-vx} ${bottomYAt(RIGHT_EDGE)+36-vy}`);
     }else{
@@ -2765,7 +2767,7 @@
 
     // tap targets + marks
     for(let s=0; s<n; s++){
-      for(let f=0; f<=12; f++){
+      for(let f=0; f<=11; f++){
         const x = cellCenterX(f), y = yOf(s, x);
         const isMarked = marks[s] === f;
         const pc = pitchAt(s, f);
