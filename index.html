@@ -300,9 +300,9 @@
   svg#staffSvg{ width:190px; height:auto; display:block; max-width:100%; flex-shrink:0; }
   .fretboard-wrap{
     padding:14px 10px 6px;
-    overflow-x:auto;
+    overflow:hidden; /* 12フレット目が余白にはみ出すが、枠の外には出さない */
   }
-  svg#fretboard, svg#chordFretboard{ width:100%; height:auto; display:block; }
+  svg#fretboard, svg#chordFretboard{ width:100%; height:auto; display:block; overflow:visible; }
   .fret-num{ fill: var(--text-dim); font-size:11px; text-anchor:middle; }
   .question-area{ text-align:center; }
   #questionText{ margin:0 0 10px; font-size:0.95rem; color:var(--text-dim); }
@@ -1376,7 +1376,25 @@
 
   window.matchMedia('(max-width: 600px)').addEventListener('change', ()=> renderFretboard());
 
-  function renderFretboard(){
+  function renderFretboard(){ renderFretboardBase(); addFret12Fade(svg); }
+
+  // 11フレットより右（12フレット目）を、背景色を重ねて薄く見せる。タップは邪魔しない。
+  function addFret12Fade(svgNode){
+    const x0 = fretWireX(11) + 3;
+    const old = svgNode.querySelector('[id^="fret12FadeG"]');
+    if(old) old.remove();
+    const g = svgEl('g', { id:'fret12FadeG-'+svgNode.id, 'pointer-events':'none' });
+    const defs = svgEl('defs', {});
+    const grad = svgEl('linearGradient', { id:'fret12Fade-'+svgNode.id, gradientUnits:'userSpaceOnUse', x1:x0, y1:0, x2:x0+70, y2:0 });
+    grad.appendChild(svgEl('stop', { offset:'0%', 'stop-color':'#26262c', 'stop-opacity':0.45 }));
+    grad.appendChild(svgEl('stop', { offset:'100%', 'stop-color':'#26262c', 'stop-opacity':0.9 }));
+    defs.appendChild(grad);
+    g.appendChild(defs);
+    g.appendChild(svgEl('rect', { x:x0, y:-400, width:400, height:2400, fill:'url(#fret12Fade-'+svgNode.id+')' }));
+    svgNode.appendChild(g);
+  }
+
+  function renderFretboardBase(){
     svg.innerHTML = '';
     const strings = getCurrentTuning();
     const n = strings.length;
@@ -1405,13 +1423,15 @@
 
     const narrow = window.matchMedia('(max-width: 600px)').matches;
     const height = Math.max(bottomHeadY, bottomYAt(RIGHT_EDGE)+40);
+    // 表示領域は11フレットまで。12フレット目は領域の外（余白側）にはみ出して、薄く表示する。
+    const viewRight = fretWireX(11) + 4;
     if(narrow){
-      // スマホ幅ではヘッド・ペグを隠し、指板を画面いっぱいに表示
-      const vx = NUT_X - 18;
+      // スマホ幅ではヘッド・ペグを隠し、指板を画面いっぱいに表示（0フレット側に余裕を持たせる）
+      const vx = NUT_X - 40;
       const vy = Math.min(neckTop, topYAt(RIGHT_EDGE)) - 12;
-      svg.setAttribute('viewBox', `${vx} ${vy} ${width-vx} ${bottomYAt(RIGHT_EDGE)+36-vy}`);
+      svg.setAttribute('viewBox', `${vx} ${vy} ${viewRight-vx} ${bottomYAt(RIGHT_EDGE)+36-vy}`);
     }else{
-      svg.setAttribute('viewBox', `0 0 ${width} ${height}`);
+      svg.setAttribute('viewBox', `0 0 ${viewRight} ${height}`);
     }
 
     // ---- gradient defs ----
@@ -2602,7 +2622,25 @@
     return el;
   }
 
-  function render(){
+  function render(){ renderBase(); addFret12Fade(svg); }
+
+  // 11フレットより右（12フレット目）を、背景色を重ねて薄く見せる。タップは邪魔しない。
+  function addFret12Fade(svgNode){
+    const x0 = fretWireX(11) + 3;
+    const old = svgNode.querySelector('[id^="fret12FadeG"]');
+    if(old) old.remove();
+    const g = svgEl('g', { id:'fret12FadeG-'+svgNode.id, 'pointer-events':'none' });
+    const defs = svgEl('defs', {});
+    const grad = svgEl('linearGradient', { id:'fret12Fade-'+svgNode.id, gradientUnits:'userSpaceOnUse', x1:x0, y1:0, x2:x0+70, y2:0 });
+    grad.appendChild(svgEl('stop', { offset:'0%', 'stop-color':'#26262c', 'stop-opacity':0.45 }));
+    grad.appendChild(svgEl('stop', { offset:'100%', 'stop-color':'#26262c', 'stop-opacity':0.9 }));
+    defs.appendChild(grad);
+    g.appendChild(defs);
+    g.appendChild(svgEl('rect', { x:x0, y:-400, width:400, height:2400, fill:'url(#fret12Fade-'+svgNode.id+')' }));
+    svgNode.appendChild(g);
+  }
+
+  function renderBase(){
     updateChordDisplay();
 
     svg.innerHTML = '';
@@ -2631,13 +2669,15 @@
 
     const narrow = window.matchMedia('(max-width: 600px)').matches;
     const height = Math.max(bottomHeadY, bottomYAt(RIGHT_EDGE)+40);
+    // 表示領域は11フレットまで。12フレット目は領域の外（余白側）にはみ出して、薄く表示する。
+    const viewRight = fretWireX(11) + 4;
     if(narrow){
-      // スマホ幅ではヘッド・ペグを隠し、指板を画面いっぱいに表示
-      const vx = NUT_X - 18;
+      // スマホ幅ではヘッド・ペグを隠し、指板を画面いっぱいに表示（0フレット側に余裕を持たせる）
+      const vx = NUT_X - 40;
       const vy = Math.min(neckTop, topYAt(RIGHT_EDGE)) - 12;
-      svg.setAttribute('viewBox', `${vx} ${vy} ${width-vx} ${bottomYAt(RIGHT_EDGE)+36-vy}`);
+      svg.setAttribute('viewBox', `${vx} ${vy} ${viewRight-vx} ${bottomYAt(RIGHT_EDGE)+36-vy}`);
     }else{
-      svg.setAttribute('viewBox', `0 0 ${width} ${height}`);
+      svg.setAttribute('viewBox', `0 0 ${viewRight} ${height}`);
     }
 
     const defs = svgEl('defs', {});
